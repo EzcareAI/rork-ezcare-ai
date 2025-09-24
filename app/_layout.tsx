@@ -5,9 +5,7 @@ import React, { useEffect, Component, ReactNode } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet, View, Text } from "react-native";
 import { AuthProvider } from "@/contexts/auth-context";
-import { SubscriptionModalProvider } from "@/contexts/subscription-modal-context";
 import { trpc, trpcClient } from "@/lib/trpc";
-import GlobalSubscriptionModal from "./global-subscription-modal";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -58,7 +56,6 @@ function RootLayoutNav() {
       <Stack.Screen name="quiz" />
       <Stack.Screen name="quiz-result" />
       <Stack.Screen name="chat" />
-
     </Stack>
   );
 }
@@ -73,12 +70,9 @@ export default function RootLayout() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <SubscriptionModalProvider>
-              <GestureHandlerRootView style={styles.container}>
-                <RootLayoutNav />
-                <GlobalSubscriptionModal />
-              </GestureHandlerRootView>
-            </SubscriptionModalProvider>
+            <GestureHandlerRootView style={styles.container}>
+              <RootLayoutNav />
+            </GestureHandlerRootView>
           </AuthProvider>
         </QueryClientProvider>
       </trpc.Provider>

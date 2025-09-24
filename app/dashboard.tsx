@@ -6,7 +6,6 @@ import { Menu, X, CreditCard, Settings, LogOut, Zap, RotateCcw, TrendingUp, Tras
 import { useAuth } from '@/contexts/auth-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { trpc } from '@/lib/trpc';
-import SubscriptionButton from '@/components/subscription-button';
 
 interface QuizResult {
   id: string;
@@ -213,23 +212,6 @@ export default function DashboardPage() {
               <Text style={styles.actionButtonText}>Chat with Ez</Text>
             </TouchableOpacity>
           </View>
-          
-          {/* Subscription CTA */}
-          {user?.subscription_plan === 'trial' && (
-            <View style={styles.subscriptionCta}>
-              <Text style={styles.subscriptionCtaTitle}>Upgrade for More Features</Text>
-              <Text style={styles.subscriptionCtaText}>
-                Get unlimited questions, premium analysis, and priority support.
-              </Text>
-              <SubscriptionButton 
-                plan="pro" 
-                title="Upgrade Now" 
-                size="medium" 
-                variant="primary"
-                style={styles.subscriptionButton}
-              />
-            </View>
-          )}
         </View>
 
         {/* WhatsApp CTA */}
@@ -704,28 +686,5 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#6B7280',
-  },
-  subscriptionCta: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  subscriptionCtaTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subscriptionCtaText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  subscriptionButton: {
-    marginTop: 12,
   },
 });

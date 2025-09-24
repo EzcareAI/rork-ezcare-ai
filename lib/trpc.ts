@@ -8,31 +8,21 @@ export const trpc = createTRPCReact<AppRouter>();
 const getBaseUrl = () => {
   let baseUrl = '';
   
-  // Check both __DEV__ and APP_ENV for environment detection
-  const isDevelopment = __DEV__ || process.env.APP_ENV === 'development';
-  const isProduction = process.env.APP_ENV === 'production' || (!__DEV__ && !process.env.APP_ENV);
-  
-  if (isDevelopment && !isProduction) {
-    if (typeof window !== 'undefined') {
-      // For web platform in development, use current origin
-      baseUrl = `${window.location.origin}/api`;
-    } else {
-      // For mobile in development, use localhost
-      baseUrl = "http://localhost:8081/api";
-    }
+  // If EXPO_PUBLIC_API_URL is set, use it (production)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    baseUrl = process.env.EXPO_PUBLIC_API_URL;
+  } else if (typeof window !== 'undefined') {
+    // For web platform in development, use current origin
+    baseUrl = `${window.location.origin}/api`;
   } else {
-    // In production, always use EXPO_PUBLIC_API_URL
-    baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://zvfley8yoowhncate9z5.rork.app/api";
+    // For mobile in development
+    baseUrl = "https://zvfley8yoowhncate9z5.rork.app/api";
   }
   
-  console.log('Environment detection:');
-  console.log('  __DEV__:', __DEV__);
-  console.log('  APP_ENV:', process.env.APP_ENV || 'NOT SET');
-  console.log('  isDevelopment:', isDevelopment);
-  console.log('  isProduction:', isProduction);
   console.log('tRPC getBaseUrl computed:', baseUrl);
-  console.log('EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET');
+  console.log('EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET (using local)');
   console.log('window.location.origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A');
+  console.log('Environment mode:', __DEV__ ? 'development' : 'production');
   
   return baseUrl;
 };

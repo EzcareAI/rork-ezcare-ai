@@ -96,6 +96,7 @@ export default function PricingPage() {
       // Use the correct API URL from environment
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:8081/api');
       console.log('Making checkout request to:', `${apiUrl}/checkout`);
+      
       const res = await fetch(`${apiUrl}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,17 +106,23 @@ export default function PricingPage() {
           email: user?.email,
         }),
       });
+      
       console.log('Checkout response status:', res.status);
       console.log('Checkout response headers:', res.headers.get('content-type'));
       
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Non-JSON response:', errorText);
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      // Check if response is JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('Non-JSON response:', text);
+        Alert.alert('Error', 'Server returned invalid response. Please try again.');
+        return;
       }
       
       const data = await res.json();
-      if (data.url) {
+      console.log('Checkout response data:', data);
+      
+      if (data.success && data.url) {
         if (Platform.OS === 'web') {
           window.location.href = data.url;
         } else {
@@ -138,11 +145,12 @@ export default function PricingPage() {
           );
         }
       } else {
-        Alert.alert('Error', 'Failed to create checkout session');
+        const errorMessage = data.error || 'Failed to create checkout session';
+        Alert.alert('Error', errorMessage);
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      Alert.alert('Error', 'Failed to process subscription. Please try again.');
+      Alert.alert('Error', `Failed to process subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
