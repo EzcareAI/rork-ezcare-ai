@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Menu, X, CreditCard, Settings, LogOut, Zap, RotateCcw, TrendingUp, Trash2, MessageSquare } from 'lucide-react-native';
@@ -7,36 +7,18 @@ import { useAuth } from '@/contexts/auth-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { trpc } from '@/lib/trpc';
 
-interface QuizResult {
-  id: string;
-  user_id: string;
-  name: string;
-  phone: string;
-  country_code: string;
-  height: number;
-  weight: number;
-  sleep_hours: number;
-  activity_level: string;
-  smoking: boolean;
-  alcohol_frequency: string;
-  stress_level: number;
-  diet_quality: string;
-  bmi: number;
-  bmi_category: string;
-  health_score: number;
-  created_at: string;
-}
 
-const { width } = Dimensions.get('window');
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   const { user, logout, deleteAccount, isLoading } = useAuth();
   const quizHistoryQuery = trpc.quiz.getHistory.useQuery(
-    user ? { userId: user.id } : { userId: '' },
+    { userId: user?.id || '' },
     {
-      enabled: !!user
+      enabled: !!user?.id
     }
   );
 
@@ -53,51 +35,73 @@ export default function DashboardPage() {
 
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/');
+    if (Platform.OS === 'web') {
+      setShowLogoutModal(true);
+    } else {
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Sign Out', 
+            style: 'destructive',
+            onPress: async () => {
+              await logout();
+              router.replace('/');
+            }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutModal(false);
+    await logout();
+    router.replace('/');
   };
 
   const handleDeleteAccount = async () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all your data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            const result = await deleteAccount();
-            if (result.success) {
-              Alert.alert('Account Deleted', 'Your account and all data have been permanently deleted.');
-              router.replace('/');
-            } else {
-              Alert.alert('Error', result.error || 'Failed to delete account. Please try again.');
+    if (Platform.OS === 'web') {
+      setShowDeleteModal(true);
+    } else {
+      Alert.alert(
+        'Delete Account',
+        'This will permanently delete your account and all your data. This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Delete', 
+            style: 'destructive',
+            onPress: async () => {
+              const result = await deleteAccount();
+              if (result.success) {
+                Alert.alert('Account Deleted', 'Your account and all data have been permanently deleted.');
+                router.replace('/');
+              } else {
+                Alert.alert('Error', result.error || 'Failed to delete account. Please try again.');
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    setShowDeleteModal(false);
+    const result = await deleteAccount();
+    if (result.success) {
+      router.replace('/');
+    }
   };
 
   const handleWhatsApp = () => {
     const message = encodeURIComponent('Hi! I\'d like to try EZCare AI on WhatsApp.');
     const url = `https://wa.me/1234567890?text=${message}`;
     Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'Could not open WhatsApp');
+      console.log('Could not open WhatsApp');
     });
   };
 
@@ -307,6 +311,66 @@ export default function DashboardPage() {
           </View>
         </View>
       )}
+
+      {/* Logout Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Sign Out</Text>
+            <Text style={styles.modalText}>Are you sure you want to sign out?</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={confirmLogout}
+              >
+                <Text style={styles.confirmButtonText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Account Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Delete Account</Text>
+            <Text style={styles.modalText}>
+              This will permanently delete your account and all your data. This action cannot be undone.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowDeleteModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteButton]}
+                onPress={confirmDeleteAccount}
+              >
+                <Text style={styles.deleteButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -571,7 +635,8 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: Math.min(300, width * 0.8),
+    width: 300,
+    maxWidth: '80%',
     backgroundColor: '#fff',
     paddingTop: 60,
   },
@@ -686,5 +751,65 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+  },
+  cancelButtonText: {
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  confirmButton: {
+    backgroundColor: '#10B981',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });

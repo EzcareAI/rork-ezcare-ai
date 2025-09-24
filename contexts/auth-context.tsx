@@ -35,7 +35,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
         return;
       }
     } catch (error) {
-      console.log('tRPC user fetch failed, trying direct Supabase:', error);
+      console.log('tRPC user fetch failed, trying direct Supabase:', error instanceof Error ? error.message : 'Unknown error');
       // Don't fail completely, continue with Supabase fallback
     }
 
@@ -176,7 +176,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
         password,
         options: {
           data: { name },
-          emailRedirectTo: `${process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || window.location.origin}/auth/callback`
+          emailRedirectTo: `${process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || (typeof window !== 'undefined' ? window.location.origin : 'https://zvfley8yoowhncate9z5.rork.app')}/auth/callback`
         }
       });
 

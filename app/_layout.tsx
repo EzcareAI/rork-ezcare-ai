@@ -23,6 +23,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error boundary caught an error:', error, errorInfo);
+    // In production, you might want to log this to a service like Sentry
   }
 
   render() {
