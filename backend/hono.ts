@@ -310,12 +310,22 @@ app.post("/stripe/webhook", async (c) => {
 app.use(
   "/trpc/*",
   async (c, next) => {
-    console.log('tRPC request:', c.req.method, c.req.url);
+    console.log('🔍 tRPC request:', c.req.method, c.req.url);
+    console.log('🔍 tRPC request headers:', Object.fromEntries(c.req.raw.headers.entries()));
     await next();
+    console.log('🔍 tRPC response status:', c.res.status);
   },
   trpcServer({
     router: appRouter,
     createContext,
+    onError: ({ error, path, type }) => {
+      console.error('🚨 tRPC Error:', {
+        path,
+        type,
+        error: error.message,
+        stack: error.stack
+      });
+    },
   })
 );
 

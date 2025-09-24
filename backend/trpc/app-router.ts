@@ -1,4 +1,4 @@
-import { createTRPCRouter } from "./create-context";
+import { createTRPCRouter, publicProcedure } from "./create-context";
 import hiRoute from "./routes/example/hi/route";
 import { saveQuizResponseProcedure } from "./routes/quiz/save-response/route";
 import { getQuizHistoryProcedure } from "./routes/quiz/get-history/route";
@@ -11,6 +11,9 @@ import { createCheckoutSessionProcedure } from "./routes/stripe/checkout/route";
 import { getSubscriptionProcedure, cancelSubscriptionProcedure } from "./routes/stripe/subscription/route";
 
 export const appRouter = createTRPCRouter({
+  debug: createTRPCRouter({
+    ping: publicProcedure.query(() => ({ message: 'pong', timestamp: new Date().toISOString() })),
+  }),
   example: createTRPCRouter({
     hi: hiRoute,
   }),

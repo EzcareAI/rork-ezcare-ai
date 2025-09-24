@@ -11,6 +11,8 @@ export default function DatabaseTestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [checkoutResult, setCheckoutResult] = useState<any>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [trpcStripeResult, setTrpcStripeResult] = useState<any>(null);
+  const [trpcStripeLoading, setTrpcStripeLoading] = useState(false);
 
   const runDatabaseTest = async () => {
     setIsLoading(true);
@@ -66,6 +68,14 @@ export default function DatabaseTestPage() {
         results.database = dbResult;
       } catch (error) {
         results.database = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+      
+      // Test tRPC debug ping
+      try {
+        const debugResult = await trpcClient.debug.ping.query();
+        results.debugPing = { success: true, data: debugResult };
+      } catch (error) {
+        results.debugPing = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
       
       setTestResult({
@@ -198,6 +208,7 @@ export default function DatabaseTestPage() {
               <Text style={styles.debugText}>API Hello: {JSON.stringify(testResult.apiHello, null, 2)}</Text>
               <Text style={styles.debugText}>API Env Test: {JSON.stringify(testResult.apiEnvTest, null, 2)}</Text>
               <Text style={styles.debugText}>tRPC: {JSON.stringify(testResult.tRPC, null, 2)}</Text>
+              <Text style={styles.debugText}>Debug Ping: {JSON.stringify(testResult.debugPing, null, 2)}</Text>
               <Text style={styles.debugText}>Database: {JSON.stringify(testResult.database, null, 2)}</Text>
             </View>
             

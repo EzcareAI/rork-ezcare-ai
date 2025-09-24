@@ -5,16 +5,65 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ArrowLeft, CreditCard, Calendar, Zap, ExternalLink } from 'lucide-react-native';
 import { useAuth } from '@/contexts/auth-context';
+import { trpc } from '@/lib/trpc';
+import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 
 export default function BillingPage() {
   const { user } = useAuth();
+  const cancelSubscriptionMutation = trpc.stripe.cancelSubscription.useMutation();
 
   const handleManageBilling = () => {
-    // Mock Stripe customer portal - in real app, this would redirect to Stripe
+    if (user?.subscription_plan === 'trial') {
+      Alert.alert(
+        'No Active Subscription',
+        'You are currently on a trial plan. Upgrade to a paid plan to access billing management.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     Alert.alert(
-      'Billing Portal',
-      'This would redirect to Stripe customer portal in a real app where you can manage your subscription, update payment methods, and view billing history.',
-      [{ text: 'OK' }]
+      'Manage Subscription',
+      'What would you like to do?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancel Subscription', style: 'destructive', onPress: handleCancelSubscription },
+        { text: 'View Pricing', onPress: () => router.push('/pricing') },
+      ]
+    );
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!user) return;
+
+    Alert.alert(
+      'Cancel Subscription',
+      'Are you sure you want to cancel your subscription? You will lose access to premium features and your credits will be reset to the trial amount.',
+      [
+        { text: 'Keep Subscription', style: 'cancel' },
+        {
+          text: 'Cancel Subscription',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await cancelSubscriptionMutation.mutateAsync({ userId: user.id });
+              Alert.alert(
+                'Subscription Cancelled',
+                'Your subscription has been cancelled successfully. You have been downgraded to the trial plan.',
+                [{ text: 'OK', onPress: () => router.push('/dashboard') }]
+              );
+            } catch (error) {
+              console.error('Error cancelling subscription:', error);
+              Alert.alert(
+                'Error',
+                'Failed to cancel subscription. Please try again or contact support.',
+                [{ text: 'OK' }]
+              );
+            }
+          }
+        }
+      ]
     );
   };
 
