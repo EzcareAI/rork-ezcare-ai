@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Menu, X, CreditCard, Settings, LogOut, Zap, RotateCcw, TrendingUp, Trash2, MessageSquare } from 'lucide-react-native';
+import { Menu, X, CreditCard, Settings, LogOut, Zap, RotateCcw, TrendingUp, Trash2, MessageSquare, TestTube } from 'lucide-react-native';
 import { useAuth } from '@/contexts/auth-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { trpc } from '@/lib/trpc';
@@ -214,6 +214,14 @@ export default function DashboardPage() {
             >
               <MessageSquare size={24} color="#10B981" />
               <Text style={styles.actionButtonText}>Chat with Ez</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/backend-test')}
+            >
+              <TestTube size={24} color="#3B82F6" />
+              <Text style={styles.actionButtonText}>Backend Test</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -497,10 +505,12 @@ const styles = StyleSheet.create({
   },
   actionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   actionButton: {
     flex: 1,
+    minWidth: '30%',
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
