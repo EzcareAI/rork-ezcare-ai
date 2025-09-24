@@ -31,7 +31,7 @@ export default function BillingPage() {
             <ArrowLeft size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Billing & Usage</Text>
-          <View style={{ width: 24 }} />
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* Current Plan */}
@@ -106,7 +106,7 @@ export default function BillingPage() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Upgrade Your Plan</Text>
             <Text style={styles.upgradeText}>
-              You're currently on a trial plan. Upgrade to get more credits and features.
+              You&apos;re currently on a trial plan. Upgrade to get more credits and features.
             </Text>
             
             <TouchableOpacity 
@@ -331,5 +331,8 @@ const styles = StyleSheet.create({
   contactItem: {
     fontSize: 16,
     color: '#1F2937',
+  },
+  headerSpacer: {
+    width: 24,
   },
 });

@@ -123,6 +123,52 @@ app.post("/checkout", async (c) => {
   }
 });
 
+// Cancel subscription endpoint
+app.post("/cancel-subscription", async (c) => {
+  try {
+    console.log('🚀 Cancel subscription endpoint hit!');
+    
+    if (!stripe) {
+      console.error('Stripe not initialized');
+      return c.json({ success: false, error: 'Payment system not configured' }, 500);
+    }
+    
+    const { subscriptionId, userId } = await c.req.json();
+    console.log('Cancel subscription request:', { subscriptionId, userId });
+    
+    if (!subscriptionId || !userId) {
+      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    }
+
+    // Cancel the subscription in Stripe
+    const canceledSubscription = await stripe.subscriptions.cancel(subscriptionId);
+    console.log('Subscription canceled in Stripe:', canceledSubscription.id);
+
+    // Update the subscription status in database
+    await supabaseAdmin
+      .from('subscriptions')
+      .update({ status: 'canceled' })
+      .eq('stripe_subscription_id', subscriptionId);
+
+    // Downgrade user to free plan
+    await supabaseAdmin
+      .from('users')
+      .update({ 
+        subscription_plan: 'trial',
+        credits: 20,
+        credits_reset_date: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    console.log('Subscription canceled successfully');
+    return c.json({ success: true, message: 'Subscription canceled successfully' });
+  } catch (error) {
+    console.error('Cancel subscription error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ success: false, error: `Cancel failed: ${errorMessage}` }, 500);
+  }
+});
+
 // Stripe webhook endpoint
 app.post("/stripe/webhook", async (c) => {
   const sig = c.req.header('stripe-signature');
@@ -276,12 +322,12 @@ app.use(
 // Catch-all route for debugging
 app.all('*', (c) => {
   console.log('🔍 Catch-all route hit:', c.req.method, c.req.url);
-  console.log('Available routes: /, /hello, /env-test, /checkout, /stripe/webhook, /trpc/*');
+  console.log('Available routes: /, /hello, /env-test, /checkout, /cancel-subscription, /stripe/webhook, /trpc/*');
   return c.json({ 
     error: 'Route not found', 
     method: c.req.method, 
     url: c.req.url,
-    availableRoutes: ['/', '/hello', '/env-test', '/checkout', '/stripe/webhook', '/trpc/*']
+    availableRoutes: ['/', '/hello', '/env-test', '/checkout', '/cancel-subscription', '/stripe/webhook', '/trpc/*']
   }, 404);
 });
 

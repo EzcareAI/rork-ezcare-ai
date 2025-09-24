@@ -5,6 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ArrowLeft, Check, Zap, Star, Crown } from 'lucide-react-native';
 import { useAuth } from '@/contexts/auth-context';
+import { trpc } from '@/lib/trpc';
+import * as WebBrowser from 'expo-web-browser';
 
 interface PricingPlan {
   id: string;
@@ -86,71 +88,40 @@ const plans: PricingPlan[] = [
 export default function PricingPage() {
   const { user, updateSubscription } = useAuth();
 
+  const createCheckoutMutation = trpc.stripe.createCheckoutSession.useMutation();
+
   const handleCheckout = async (plan: "starter" | "pro" | "premium") => {
     if (!user) {
-      Alert.alert('Please sign in to subscribe');
+      console.log('No user found, please sign in');
       return;
     }
 
     try {
-      // Use the correct API URL from environment
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:8081/api');
-      console.log('Making checkout request to:', `${apiUrl}/checkout`);
-      
-      const res = await fetch(`${apiUrl}/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan,
-          userId: user?.id,
-          email: user?.email,
-        }),
+      console.log('Creating checkout session for plan:', plan);
+      const result = await createCheckoutMutation.mutateAsync({
+        plan,
+        userId: user.id,
+        email: user.email,
       });
       
-      console.log('Checkout response status:', res.status);
-      console.log('Checkout response headers:', res.headers.get('content-type'));
+      console.log('Checkout session result:', result);
       
-      // Check if response is JSON
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await res.text();
-        console.error('Non-JSON response:', text);
-        Alert.alert('Error', 'Server returned invalid response. Please try again.');
-        return;
-      }
-      
-      const data = await res.json();
-      console.log('Checkout response data:', data);
-      
-      if (data.success && data.url) {
+      if (result.success && result.url) {
         if (Platform.OS === 'web') {
-          window.location.href = data.url;
+          // On web, redirect to Stripe checkout
+          window.location.href = result.url;
         } else {
-          // For mobile, show alert for demo purposes
-          Alert.alert(
-            'Stripe Checkout',
-            'This would redirect to Stripe checkout. For demo purposes, we\'ll activate the plan directly.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Activate Plan', 
-                onPress: () => {
-                  updateSubscription(plan);
-                  Alert.alert('Success!', 'Subscription activated successfully!', [
-                    { text: 'OK', onPress: () => router.push('/dashboard') }
-                  ]);
-                }
-              }
-            ]
-          );
+          // On mobile, open in browser
+          await WebBrowser.openBrowserAsync(result.url);
         }
       } else {
-        const errorMessage = data.error || 'Failed to create checkout session';
-        Alert.alert('Error', errorMessage);
+        const errorMessage = result.error || 'Failed to create checkout session';
+        console.error('Checkout error:', errorMessage);
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      Alert.alert('Error', `Failed to process subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to process subscription:', errorMessage);
     }
   };
 

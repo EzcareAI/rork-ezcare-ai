@@ -102,3 +102,48 @@ export const createUserProcedure = publicProcedure
       throw new Error(`Failed to create user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   });
+
+export const updateUserSubscriptionProcedure = publicProcedure
+  .input(z.object({
+    userId: z.string(),
+    subscriptionPlan: z.enum(['trial', 'starter', 'pro', 'premium']),
+    credits: z.number().optional(),
+  }))
+  .mutation(async ({ input, ctx }) => {
+    const { userId, subscriptionPlan, credits } = input;
+
+    try {
+      const updateData: any = {
+        subscription_plan: subscriptionPlan,
+        credits_reset_date: new Date().toISOString(),
+      };
+
+      if (credits !== undefined) {
+        updateData.credits = credits;
+      } else {
+        // Set default credits based on plan
+        const defaultCredits = {
+          trial: 20,
+          starter: 50,
+          pro: 200,
+          premium: 999999,
+        };
+        updateData.credits = defaultCredits[subscriptionPlan];
+      }
+
+      const { data, error } = await ctx.supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Failed to update subscription: ${error.message}`);
+      }
+
+      return { success: true, user: data };
+    } catch (error) {
+      throw new Error(`Failed to update subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  });
