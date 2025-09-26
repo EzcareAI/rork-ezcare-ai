@@ -287,6 +287,12 @@ export default function LandingPage() {
             <TouchableOpacity onPress={() => router.push('/simple-test')}>
               <Text style={styles.footerLink}>Simple Test</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/deployment-test')}>
+              <Text style={styles.footerLink}>Deployment Test</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/backend-status')}>
+              <Text style={styles.footerLink}>Backend Status</Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.footerText}>
             © 2024 EZCare AI. Educational content only — not medical advice.
