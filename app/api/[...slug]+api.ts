@@ -3,11 +3,19 @@ import app from '@/backend/hono';
 // Handle all HTTP methods by forwarding to Hono app
 export async function GET(request: Request): Promise<Response> {
   try {
-    console.log('API GET request:', request.url);
+    console.log('🔍 API GET request:', request.url);
+    console.log('🔍 API GET method:', request.method);
+    console.log('🔍 API GET headers:', Object.fromEntries(request.headers.entries()));
+    
     // Strip /api prefix from the URL for Hono
     const url = new URL(request.url);
+    console.log('🔍 Original pathname:', url.pathname);
+    
     const pathWithoutApi = url.pathname.replace(/^\/api/, '') || '/';
+    console.log('🔍 Path without /api:', pathWithoutApi);
+    
     const newUrl = new URL(pathWithoutApi + url.search, url.origin);
+    console.log('🔍 New URL for Hono:', newUrl.toString());
     
     const modifiedRequest = new Request(newUrl, {
       method: request.method,
@@ -15,12 +23,19 @@ export async function GET(request: Request): Promise<Response> {
       body: request.body,
     });
     
+    console.log('🔍 Calling Hono app with:', modifiedRequest.method, modifiedRequest.url);
     const response = await app.fetch(modifiedRequest, {});
-    console.log('API GET response status:', response.status);
+    console.log('✅ API GET response status:', response.status);
+    console.log('✅ API GET response headers:', Object.fromEntries(response.headers.entries()));
+    
     return response;
   } catch (error) {
-    console.error('API GET error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    console.error('❌ API GET error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });

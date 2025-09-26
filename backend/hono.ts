@@ -48,12 +48,22 @@ app.use('*', async (c, next) => {
 
 // Health check
 app.get("/", (c) => {
-  console.log('Health check endpoint hit');
+  console.log('🏥 Health check endpoint hit');
+  console.log('🏥 Request URL:', c.req.url);
+  console.log('🏥 Request method:', c.req.method);
+  console.log('🏥 Request headers:', Object.fromEntries(c.req.raw.headers.entries()));
+  
   return c.json({ 
     status: "ok", 
     message: "EZCare AI backend is running ✅",
     timestamp: new Date().toISOString(),
-    version: "1.0.0"
+    version: "1.0.0",
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      hasSupabaseUrl: !!process.env.EXPO_PUBLIC_SUPABASE_URL,
+      hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasStripeKey: !!process.env.STRIPE_SECRET_KEY
+    }
   });
 });
 
@@ -173,20 +183,24 @@ app.post("/cancel-subscription", async (c) => {
     console.log('Subscription canceled in Stripe:', canceledSubscription.id);
 
     // Update the subscription status in database
-    await supabaseAdmin
-      .from('subscriptions')
-      .update({ status: 'canceled' })
-      .eq('stripe_subscription_id', subscriptionId);
+    if (supabaseAdmin) {
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({ status: 'canceled' })
+        .eq('stripe_subscription_id', subscriptionId);
 
-    // Downgrade user to free plan
-    await supabaseAdmin
-      .from('users')
-      .update({ 
-        subscription_plan: 'trial',
-        credits: 20,
-        credits_reset_date: new Date().toISOString()
-      })
-      .eq('id', userId);
+      // Downgrade user to free plan
+      await supabaseAdmin
+        .from('users')
+        .update({ 
+          subscription_plan: 'trial',
+          credits: 20,
+          credits_reset_date: new Date().toISOString()
+        })
+        .eq('id', userId);
+    } else {
+      console.warn('Supabase admin client not available, skipping database updates');
+    }
 
     console.log('Subscription canceled successfully');
     return c.json({ success: true, message: 'Subscription canceled successfully' });
@@ -231,28 +245,32 @@ app.post("/stripe/webhook", async (c) => {
           premium: 999999
         }[plan as 'starter' | 'pro' | 'premium'] || 50;
 
-        await supabaseAdmin
-          .from('users')
-          .update({ 
-            subscription_plan: plan,
-            credits,
-            credits_reset_date: new Date().toISOString()
-          })
-          .eq('id', userId);
-
-        // Create subscription record
-        if (session.subscription) {
+        if (supabaseAdmin) {
           await supabaseAdmin
-            .from('subscriptions')
-            .upsert({
-              user_id: userId,
-              stripe_customer_id: session.customer as string,
-              stripe_subscription_id: session.subscription as string,
-              plan: plan as 'starter' | 'pro' | 'premium',
-              status: 'active',
-              current_period_start: new Date().toISOString(),
-              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            });
+            .from('users')
+            .update({ 
+              subscription_plan: plan,
+              credits,
+              credits_reset_date: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          // Create subscription record
+          if (session.subscription) {
+            await supabaseAdmin
+              .from('subscriptions')
+              .upsert({
+                user_id: userId,
+                stripe_customer_id: session.customer as string,
+                stripe_subscription_id: session.subscription as string,
+                plan: plan as 'starter' | 'pro' | 'premium',
+                status: 'active',
+                current_period_start: new Date().toISOString(),
+                current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              });
+          }
+        } else {
+          console.warn('Supabase admin client not available, skipping database updates');
         }
         break;
       }
@@ -260,40 +278,44 @@ app.post("/stripe/webhook", async (c) => {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         
-        // Find user by customer ID
-        const { data: subscriptionRecord } = await supabaseAdmin
-          .from('subscriptions')
-          .select('user_id, plan')
-          .eq('stripe_subscription_id', subscription.id)
-          .single();
-
-        if (subscriptionRecord) {
-          // Update subscription status
-          await supabaseAdmin
+        if (supabaseAdmin) {
+          // Find user by customer ID
+          const { data: subscriptionRecord } = await supabaseAdmin
             .from('subscriptions')
-            .update({
-              status: subscription.status as 'active' | 'canceled' | 'past_due' | 'unpaid',
-              current_period_start: new Date().toISOString(),
-              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            })
-            .eq('stripe_subscription_id', subscription.id);
+            .select('user_id, plan')
+            .eq('stripe_subscription_id', subscription.id)
+            .single();
 
-          // Reset credits if subscription renewed
-          if (subscription.status === 'active') {
-            const credits = {
-              starter: 50,
-              pro: 200,
-              premium: 999999
-            }[subscriptionRecord.plan as 'starter' | 'pro' | 'premium'] || 50;
-
+          if (subscriptionRecord) {
+            // Update subscription status
             await supabaseAdmin
-              .from('users')
-              .update({ 
-                credits,
-                credits_reset_date: new Date().toISOString()
+              .from('subscriptions')
+              .update({
+                status: subscription.status as 'active' | 'canceled' | 'past_due' | 'unpaid',
+                current_period_start: new Date().toISOString(),
+                current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
               })
-              .eq('id', subscriptionRecord.user_id);
+              .eq('stripe_subscription_id', subscription.id);
+
+            // Reset credits if subscription renewed
+            if (subscription.status === 'active') {
+              const credits = {
+                starter: 50,
+                pro: 200,
+                premium: 999999
+              }[subscriptionRecord.plan as 'starter' | 'pro' | 'premium'] || 50;
+
+              await supabaseAdmin
+                .from('users')
+                .update({ 
+                  credits,
+                  credits_reset_date: new Date().toISOString()
+                })
+                .eq('id', subscriptionRecord.user_id);
+            }
           }
+        } else {
+          console.warn('Supabase admin client not available, skipping database updates');
         }
         break;
       }
@@ -301,27 +323,31 @@ app.post("/stripe/webhook", async (c) => {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         
-        // Find user and downgrade to free
-        const { data: subscriptionRecord } = await supabaseAdmin
-          .from('subscriptions')
-          .select('user_id')
-          .eq('stripe_subscription_id', subscription.id)
-          .single();
-
-        if (subscriptionRecord) {
-          await supabaseAdmin
-            .from('users')
-            .update({ 
-              subscription_plan: 'trial',
-              credits: 20,
-              credits_reset_date: new Date().toISOString()
-            })
-            .eq('id', subscriptionRecord.user_id);
-
-          await supabaseAdmin
+        if (supabaseAdmin) {
+          // Find user and downgrade to free
+          const { data: subscriptionRecord } = await supabaseAdmin
             .from('subscriptions')
-            .update({ status: 'canceled' })
-            .eq('stripe_subscription_id', subscription.id);
+            .select('user_id')
+            .eq('stripe_subscription_id', subscription.id)
+            .single();
+
+          if (subscriptionRecord) {
+            await supabaseAdmin
+              .from('users')
+              .update({ 
+                subscription_plan: 'trial',
+                credits: 20,
+                credits_reset_date: new Date().toISOString()
+              })
+              .eq('id', subscriptionRecord.user_id);
+
+            await supabaseAdmin
+              .from('subscriptions')
+              .update({ status: 'canceled' })
+              .eq('stripe_subscription_id', subscription.id);
+          }
+        } else {
+          console.warn('Supabase admin client not available, skipping database updates');
         }
         break;
       }
