@@ -93,11 +93,14 @@ export default function PricingPage() {
   const handleCheckout = async (plan: "starter" | "pro" | "premium") => {
     if (!user) {
       console.log('No user found, please sign in');
+      Alert.alert('Error', 'Please sign in to continue');
       return;
     }
 
     try {
       console.log('Creating checkout session for plan:', plan);
+      console.log('User details:', { id: user.id, email: user.email });
+      
       const result = await createCheckoutMutation.mutateAsync({
         plan,
         userId: user.id,
@@ -115,13 +118,27 @@ export default function PricingPage() {
           await WebBrowser.openBrowserAsync(result.url);
         }
       } else {
-        const errorMessage = result.error || 'Failed to create checkout session';
-        console.error('Checkout error:', errorMessage);
+        console.error('Checkout error: No URL returned');
+        Alert.alert('Checkout Error', 'Failed to create checkout session');
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Failed to process subscription:', errorMessage);
+      
+      let errorMessage = 'Failed to process subscription. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Network error')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'Request timeout. The server may be busy. Please try again.';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Unable to connect to server. Please try again later.';
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+      
+      Alert.alert('Subscription Error', errorMessage);
     }
   };
 

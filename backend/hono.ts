@@ -20,13 +20,21 @@ try {
   console.error('Failed to initialize Stripe:', error);
 }
 
-// Enable CORS
-app.use("*", cors());
+// Enable CORS with proper configuration
+app.use("*", cors({
+  origin: '*', // Allow all origins for now to fix the immediate issue
+  credentials: true,
+}));
 
 // Health check
 app.get("/", (c) => {
   console.log('Health check endpoint hit');
-  return c.json({ status: "ok", message: "EZCare AI backend is running ✅" });
+  return c.json({ 
+    status: "ok", 
+    message: "EZCare AI backend is running ✅",
+    timestamp: new Date().toISOString(),
+    version: "1.0.0"
+  });
 });
 
 // Simple test route
@@ -312,6 +320,16 @@ app.use(
   async (c, next) => {
     console.log('🔍 tRPC request:', c.req.method, c.req.url);
     console.log('🔍 tRPC request headers:', Object.fromEntries(c.req.raw.headers.entries()));
+    
+    // Add CORS headers for preflight requests
+    if (c.req.method === 'OPTIONS') {
+      return c.text('', 200, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-trpc-source',
+      });
+    }
+    
     await next();
     console.log('🔍 tRPC response status:', c.res.status);
   },

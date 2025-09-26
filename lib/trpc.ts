@@ -44,14 +44,29 @@ export const trpcClient = createTRPCClient<AppRouter>({
       fetch: async (url, options) => {
         if (__DEV__) {
           console.log('tRPC fetch URL:', url);
+          console.log('tRPC fetch options:', {
+            method: options?.method,
+            headers: options?.headers,
+            body: options?.body ? 'present' : 'none'
+          });
         }
         
         try {
-          const response = await fetch(url, options);
+          // Add timeout to prevent hanging requests
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+          
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
           
           if (__DEV__) {
             console.log('tRPC response status:', response.status);
             console.log('tRPC response content-type:', response.headers.get('content-type'));
+            console.log('tRPC response headers:', Object.fromEntries(response.headers.entries()));
           }
           
           // Check if response is HTML (error page) instead of JSON
@@ -63,9 +78,26 @@ export const trpcClient = createTRPCClient<AppRouter>({
             throw new Error(`tRPC fetch error: API endpoint returned HTML instead of JSON. Check if backend is properly mounted at ${url}`);
           }
           
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('tRPC HTTP error:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+          
           return response;
         } catch (error) {
           console.error('tRPC fetch error:', error);
+          
+          // Provide more specific error messages
+          if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+              throw new Error('Request timeout - backend may be unavailable');
+            }
+            if (error.message.includes('Failed to fetch')) {
+              throw new Error('Network error - check internet connection and backend availability');
+            }
+          }
+          
           throw error;
         }
       },
