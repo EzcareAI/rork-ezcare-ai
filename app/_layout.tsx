@@ -58,6 +58,7 @@ function RootLayoutNav() {
       <Stack.Screen name="quiz-result" />
       <Stack.Screen name="chat" />
       <Stack.Screen name="backend-test" />
+      <Stack.Screen name="simple-test" />
     </Stack>
   );
 }
