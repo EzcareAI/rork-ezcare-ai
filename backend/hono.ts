@@ -22,9 +22,20 @@ try {
 
 // Enable CORS with proper configuration
 app.use("*", cors({
-  origin: '*', // Allow all origins for now to fix the immediate issue
+  origin: ['*'], // Allow all origins for now to fix the immediate issue
   credentials: true,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
 }));
+
+// Add request logging middleware
+app.use('*', async (c, next) => {
+  const start = Date.now();
+  console.log(`🔍 ${c.req.method} ${c.req.url}`);
+  await next();
+  const end = Date.now();
+  console.log(`✅ ${c.req.method} ${c.req.url} - ${c.res.status} (${end - start}ms)`);
+});
 
 // Health check
 app.get("/", (c) => {
@@ -321,15 +332,6 @@ app.use(
     console.log('🔍 tRPC request:', c.req.method, c.req.url);
     console.log('🔍 tRPC request headers:', Object.fromEntries(c.req.raw.headers.entries()));
     
-    // Add CORS headers for preflight requests
-    if (c.req.method === 'OPTIONS') {
-      return c.text('', 200, {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-trpc-source',
-      });
-    }
-    
     await next();
     console.log('🔍 tRPC response status:', c.res.status);
   },
@@ -355,6 +357,7 @@ app.all('*', (c) => {
     error: 'Route not found', 
     method: c.req.method, 
     url: c.req.url,
+    timestamp: new Date().toISOString(),
     availableRoutes: ['/', '/hello', '/env-test', '/checkout', '/cancel-subscription', '/stripe/webhook', '/trpc/*']
   }, 404);
 });

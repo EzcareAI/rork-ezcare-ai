@@ -18,11 +18,39 @@ export default function BackendTestPage() {
     addResult('Testing backend health...');
     
     try {
-      const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/api/');
-      const data = await response.json();
-      addResult(`✅ Backend health: ${JSON.stringify(data)}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/api/', {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      clearTimeout(timeoutId);
+      
+      addResult(`Response status: ${response.status}`);
+      addResult(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        addResult(`✅ Backend health: ${JSON.stringify(data)}`);
+      } else {
+        const errorText = await response.text();
+        addResult(`❌ Backend returned ${response.status}: ${errorText}`);
+      }
     } catch (error) {
-      addResult(`❌ Backend health failed: ${error}`);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          addResult(`❌ Backend health failed: Request timeout`);
+        } else {
+          addResult(`❌ Backend health failed: ${error.message}`);
+        }
+      } else {
+        addResult(`❌ Backend health failed: ${String(error)}`);
+      }
     }
     
     setIsLoading(false);
@@ -36,7 +64,12 @@ export default function BackendTestPage() {
       const result = await trpcClient.debug.ping.query();
       addResult(`✅ tRPC ping: ${JSON.stringify(result)}`);
     } catch (error) {
-      addResult(`❌ tRPC ping failed: ${error}`);
+      if (error instanceof Error) {
+        addResult(`❌ tRPC ping failed: ${error.message}`);
+        addResult(`Error details: ${error.stack?.substring(0, 200) || 'No stack trace'}`);
+      } else {
+        addResult(`❌ tRPC ping failed: ${String(error)}`);
+      }
     }
     
     setIsLoading(false);
@@ -44,14 +77,39 @@ export default function BackendTestPage() {
 
   const testStripeEndpoint = async () => {
     setIsLoading(true);
-    addResult('Testing Stripe endpoint...');
+    addResult('Testing environment endpoint...');
     
     try {
-      const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/api/env-test');
-      const data = await response.json();
-      addResult(`✅ Environment test: ${JSON.stringify(data)}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/api/env-test', {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        addResult(`✅ Environment test: ${JSON.stringify(data)}`);
+      } else {
+        const errorText = await response.text();
+        addResult(`❌ Environment test failed: ${response.status} - ${errorText}`);
+      }
     } catch (error) {
-      addResult(`❌ Environment test failed: ${error}`);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          addResult(`❌ Environment test failed: Request timeout`);
+        } else {
+          addResult(`❌ Environment test failed: ${error.message}`);
+        }
+      } else {
+        addResult(`❌ Environment test failed: ${String(error)}`);
+      }
     }
     
     setIsLoading(false);
@@ -97,6 +155,30 @@ export default function BackendTestPage() {
             disabled={isLoading}
           >
             <Text style={styles.buttonText}>Test Environment</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.testButton, isLoading && styles.disabledButton]} 
+            onPress={async () => {
+              setIsLoading(true);
+              addResult('Testing network connectivity...');
+              try {
+                const response = await fetch('https://httpbin.org/get', {
+                  signal: AbortSignal.timeout(5000)
+                });
+                if (response.ok) {
+                  addResult('✅ Network connectivity: OK');
+                } else {
+                  addResult(`❌ Network test failed: ${response.status}`);
+                }
+              } catch (error) {
+                addResult(`❌ Network test failed: ${error}`);
+              }
+              setIsLoading(false);
+            }}
+            disabled={isLoading}
+          >
+            <Text style={styles.buttonText}>Test Network</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 

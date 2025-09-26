@@ -15,16 +15,137 @@ const getBaseUrl = () => {
     // For web platform in development, use current origin
     baseUrl = `${window.location.origin}/api`;
   } else {
-    // For mobile in development
+    // For mobile in development, fallback to production URL
     baseUrl = "https://zvfley8yoowhncate9z5.rork.app/api";
   }
   
-  console.log('tRPC getBaseUrl computed:', baseUrl);
-  console.log('EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET (using local)');
-  console.log('window.location.origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A');
-  console.log('Environment mode:', __DEV__ ? 'development' : 'production');
+  // Ensure baseUrl doesn't end with a slash to avoid double slashes
+  baseUrl = baseUrl.replace(/\/$/, '');
+  
+  console.log('🔍 tRPC getBaseUrl computed:', baseUrl);
+  console.log('🔍 EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET');
+  console.log('🔍 window.location.origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A');
+  console.log('🔍 Environment mode:', __DEV__ ? 'development' : 'production');
   
   return baseUrl;
+};
+
+// Custom fetch with retry logic
+const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 2): Promise<Response> => {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  
+  // Validate URL input
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    throw new Error('Invalid URL provided to tRPC fetch');
+  }
+  
+  console.log('🔍 tRPC fetch URL:', url);
+  console.log('🔍 tRPC fetch options:', {
+    method: init?.method,
+    headers: init?.headers,
+    body: init?.body ? 'present' : 'none'
+  });
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(input, {
+        ...init,
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...init?.headers,
+        },
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log(`✅ tRPC response status (attempt ${attempt + 1}):`, response.status);
+      console.log('✅ tRPC response content-type:', response.headers.get('content-type'));
+      
+      // Check if response is HTML (error page) instead of JSON
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('text/html')) {
+        const htmlText = await response.text();
+        console.error('❌ Received HTML response instead of JSON:', htmlText.substring(0, 200));
+        throw new Error(`API endpoint returned HTML instead of JSON. Backend may not be properly deployed.`);
+      }
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ tRPC HTTP error:', response.status, errorText);
+        
+        // Don't retry on client errors (4xx)
+        if (response.status >= 400 && response.status < 500) {
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        // Retry on server errors (5xx) if we have attempts left
+        if (attempt < maxRetries) {
+          console.log(`🔄 Retrying request (attempt ${attempt + 2}/${maxRetries + 1})...`);
+          await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000 * (attempt + 1))); // Exponential backoff
+          continue;
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error(`❌ tRPC fetch error (attempt ${attempt + 1}):`, error);
+      
+      // Don't retry on certain errors
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          if (attempt < maxRetries) {
+            console.log(`🔄 Retrying after timeout (attempt ${attempt + 2}/${maxRetries + 1})...`);
+            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000 * (attempt + 1)));
+            continue;
+          }
+          throw new Error('Request timeout - backend may be unavailable');
+        }
+        
+        if (error.message.includes('Failed to fetch')) {
+          if (attempt < maxRetries) {
+            console.log(`🔄 Retrying network error (attempt ${attempt + 2}/${maxRetries + 1})...`);
+            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000 * (attempt + 1)));
+            continue;
+          }
+          
+          // Test if it's a network issue or backend issue on final attempt
+          try {
+            const testResponse = await fetch('https://httpbin.org/get', { 
+              method: 'GET',
+              signal: AbortSignal.timeout(5000)
+            });
+            if (testResponse.ok) {
+              throw new Error('Network is working but backend is unreachable. Backend may be down or URL incorrect.');
+            } else {
+              throw new Error('Network connectivity issue detected.');
+            }
+          } catch {
+            throw new Error('Network connectivity issue - check internet connection.');
+          }
+        }
+      }
+      
+      // If it's the last attempt, throw the error
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying
+      console.log(`🔄 Retrying after error (attempt ${attempt + 2}/${maxRetries + 1})...`);
+      await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000 * (attempt + 1)));
+    }
+  }
+  
+  throw new Error('Max retries exceeded');
 };
 
 export const trpcClient = createTRPCClient<AppRouter>({
@@ -33,74 +154,20 @@ export const trpcClient = createTRPCClient<AppRouter>({
       url: `${getBaseUrl()}/trpc`,
       transformer: superjson,
       headers: async () => {
-        // Get session from Supabase
-        const { supabase } = await import('@/lib/supabase');
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        return {
-          authorization: session?.user?.id ? `Bearer ${session.user.id}` : '',
-        };
-      },
-      fetch: async (url, options) => {
-        if (__DEV__) {
-          console.log('tRPC fetch URL:', url);
-          console.log('tRPC fetch options:', {
-            method: options?.method,
-            headers: options?.headers,
-            body: options?.body ? 'present' : 'none'
-          });
-        }
-        
         try {
-          // Add timeout to prevent hanging requests
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+          // Get session from Supabase
+          const { supabase } = await import('@/lib/supabase');
+          const { data: { session } } = await supabase.auth.getSession();
           
-          const response = await fetch(url, {
-            ...options,
-            signal: controller.signal,
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (__DEV__) {
-            console.log('tRPC response status:', response.status);
-            console.log('tRPC response content-type:', response.headers.get('content-type'));
-            console.log('tRPC response headers:', Object.fromEntries(response.headers.entries()));
-          }
-          
-          // Check if response is HTML (error page) instead of JSON
-          const contentType = response.headers.get('content-type');
-          
-          if (contentType && contentType.includes('text/html')) {
-            const htmlText = await response.text();
-            console.error('Received HTML response instead of JSON:', htmlText.substring(0, 200));
-            throw new Error(`tRPC fetch error: API endpoint returned HTML instead of JSON. Check if backend is properly mounted at ${url}`);
-          }
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('tRPC HTTP error:', response.status, errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-          }
-          
-          return response;
+          return {
+            authorization: session?.user?.id ? `Bearer ${session.user.id}` : '',
+          };
         } catch (error) {
-          console.error('tRPC fetch error:', error);
-          
-          // Provide more specific error messages
-          if (error instanceof Error) {
-            if (error.name === 'AbortError') {
-              throw new Error('Request timeout - backend may be unavailable');
-            }
-            if (error.message.includes('Failed to fetch')) {
-              throw new Error('Network error - check internet connection and backend availability');
-            }
-          }
-          
-          throw error;
+          console.warn('Failed to get Supabase session for tRPC headers:', error);
+          return {};
         }
       },
+      fetch: fetchWithRetry,
     }),
   ],
 });
