@@ -100,11 +100,11 @@ export default function ChatPage() {
           console.log('✅ Chat saved successfully');
         }
       } catch (saveError) {
+        // Silently handle backend save failures - chat still works
         if (__DEV__) {
-          console.warn('⚠️ Failed to save chat to database:', saveError instanceof Error ? saveError.message : 'Unknown error');
+          console.warn('⚠️ Failed to save chat to database (backend may be down):', saveError instanceof Error ? saveError.message : 'Unknown error');
         }
-        // Chat functionality continues to work even if saving fails
-        // This is acceptable since the main AI functionality is independent
+        // Don't show error to user since chat functionality is independent of backend
       }
     } catch (error) {
       console.error('Error sending message:', error);

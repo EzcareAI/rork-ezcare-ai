@@ -9,14 +9,22 @@ export const trpc = createTRPCReact<AppRouter>();
 const getBaseUrl = () => {
   let baseUrl = '';
   
-  // Try different backend URLs in order of preference
-  const possibleUrls = [
-    process.env.EXPO_PUBLIC_API_URL,
-    "https://zvfley8yoowhncate9z5.rork.app/api",
-    "http://localhost:3000/api", // Local development fallback
-  ].filter(Boolean);
-  
-  baseUrl = possibleUrls[0] || "https://zvfley8yoowhncate9z5.rork.app/api";
+  // For development, try localhost first
+  if (__DEV__) {
+    const possibleUrls = [
+      "http://localhost:3000/api", // Local development
+      process.env.EXPO_PUBLIC_API_URL,
+      "https://zvfley8yoowhncate9z5.rork.app/api",
+    ].filter(Boolean);
+    baseUrl = possibleUrls[0] || "http://localhost:3000/api";
+  } else {
+    // For production, use the deployed URL
+    const possibleUrls = [
+      process.env.EXPO_PUBLIC_API_URL,
+      "https://zvfley8yoowhncate9z5.rork.app/api",
+    ].filter(Boolean);
+    baseUrl = possibleUrls[0] || "https://zvfley8yoowhncate9z5.rork.app/api";
+  }
   
   // Ensure baseUrl doesn't end with a slash to avoid double slashes
   baseUrl = baseUrl.replace(/\/$/, '');
@@ -25,7 +33,6 @@ const getBaseUrl = () => {
     console.log('🔍 tRPC getBaseUrl computed:', baseUrl);
     console.log('🔍 EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET');
     console.log('🔍 Environment mode:', __DEV__ ? 'development' : 'production');
-    console.log('🔍 Possible URLs:', possibleUrls);
   }
   
   return baseUrl;
@@ -36,15 +43,25 @@ const getBaseUrl = () => {
 // Test if backend is available
 const testBackendHealth = async (baseUrl: string): Promise<boolean> => {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(`${baseUrl}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(5000)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
+    
+    if (__DEV__) {
+      console.log(`🔍 Backend health check for ${baseUrl}: ${response.status}`);
+    }
+    
     return response.ok;
   } catch (error) {
     if (__DEV__) {
-      console.log(`❌ Backend health check failed for ${baseUrl}:`, error);
+      console.log(`❌ Backend health check failed for ${baseUrl}:`, error instanceof Error ? error.message : 'Unknown error');
     }
     return false;
   }
@@ -86,7 +103,7 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
     try {
       // Add timeout to prevent hanging requests
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       const response = await fetch(input, {
         ...init,
@@ -158,16 +175,16 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
           throw new Error('Request timeout - backend may be unavailable');
         }
         
-        if (error.message.includes('Failed to fetch') || error.message.includes('Network request failed')) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('Network request failed') || error.message.includes('fetch')) {
           if (attempt < maxRetries) {
             if (__DEV__) {
               console.log(`🔄 Retrying network error (attempt ${attempt + 2}/${maxRetries + 1})...`);
             }
-            await new Promise((resolve) => setTimeout(() => resolve(undefined), 2000));
+            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000));
             continue;
           }
           
-          throw new Error('Network connectivity issue - check internet connection.');
+          throw new Error('Backend is not responding. The deployment may be down or the URL may be incorrect.');
         }
       }
       
