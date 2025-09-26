@@ -34,16 +34,52 @@ interface QuizResult {
 }
 
 export default function QuizResultPage() {
-  const { resultId } = useLocalSearchParams();
+  const { resultId, localData } = useLocalSearchParams();
   const [result, setResult] = useState<QuizResult | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadResult();
-  }, [resultId]);
+  }, [resultId, localData]);
 
   const loadResult = async () => {
     try {
+      // First try to use local data if provided (for offline results)
+      if (localData && typeof localData === 'string') {
+        try {
+          const parsedData = JSON.parse(localData);
+          const localResult: QuizResult = {
+            id: resultId as string,
+            userId: 'local',
+            data: {
+              name: parsedData.name || 'User',
+              email: '',
+              height: '',
+              weight: '',
+              sleep: '',
+              activity: '',
+              smoking: '',
+              alcohol: '',
+              stress: '',
+              diet: ''
+            },
+            bmi: parsedData.bmi,
+            bmiCategory: parsedData.bmiCategory,
+            healthScore: parsedData.healthScore,
+            recommendations: parsedData.recommendations,
+            createdAt: new Date()
+          };
+          setResult(localResult);
+          setLoading(false);
+          return;
+        } catch (parseError) {
+          if (__DEV__) {
+            console.warn('Failed to parse local data:', parseError);
+          }
+        }
+      }
+
+      // Fallback to AsyncStorage for saved results
       const existingResults = await AsyncStorage.getItem('quizResults');
       if (existingResults) {
         const results: QuizResult[] = JSON.parse(existingResults);
@@ -171,7 +207,7 @@ export default function QuizResultPage() {
           end={{ x: 1, y: 1 }}
           style={styles.congratsSection}
         >
-          <Text style={styles.congratsTitle}>Great job, {result.data.name}! 🎉</Text>
+          <Text style={styles.congratsTitle}>Great job, {result.data?.name || 'User'}! 🎉</Text>
           <Text style={styles.congratsSubtitle}>
             Here's your personalized health assessment
           </Text>

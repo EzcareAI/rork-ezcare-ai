@@ -26,16 +26,22 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
   const loadUserProfile = useCallback(async (userId: string) => {
     try {
       // Try to load user via tRPC first (bypasses RLS)
-      console.log('Loading user profile via tRPC for userId:', userId);
+      if (__DEV__) {
+        console.log('Loading user profile via tRPC for userId:', userId);
+      }
       const result = await trpcClient.user.getUser.query({ userId });
       if (result.success && result.user) {
-        console.log('User loaded successfully via tRPC');
+        if (__DEV__) {
+          console.log('User loaded successfully via tRPC');
+        }
         setUser(result.user);
         setIsLoading(false);
         return;
       }
     } catch (error) {
-      console.log('tRPC user fetch failed, trying direct Supabase:', error instanceof Error ? error.message : 'Unknown error');
+      if (__DEV__) {
+        console.log('tRPC user fetch failed, trying direct Supabase:', error instanceof Error ? error.message : 'Unknown error');
+      }
       // Don't fail completely, continue with Supabase fallback
     }
 
@@ -51,7 +57,9 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
         console.error('Error loading user profile:', error.message, error.code);
         // If user doesn't exist, try to create it via tRPC
         if (error.code === 'PGRST116') {
-          console.log('User profile not found, attempting to create via tRPC');
+          if (__DEV__) {
+            console.log('User profile not found, attempting to create via tRPC');
+          }
           try {
             const createResult = await trpcClient.user.createUser.mutate({
               userId,
@@ -63,7 +71,9 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
               return;
             }
           } catch (createError) {
-            console.error('Failed to create user via tRPC:', createError);
+            if (__DEV__) {
+              console.error('Failed to create user via tRPC:', createError);
+            }
           }
         }
         setIsLoading(false);
@@ -192,7 +202,9 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
             email: data.user.email || email,
             name: name || '',
           });
-          console.log('User profile created:', result);
+          if (__DEV__) {
+            console.log('User profile created:', result);
+          }
           
           // If email confirmation is disabled, user is immediately confirmed
           if (data.user.email_confirmed_at || !data.user.confirmation_sent_at) {
@@ -200,7 +212,9 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
             await loadUserProfile(data.user.id);
           }
         } catch (apiError) {
-          console.log('User profile creation via tRPC failed:', apiError);
+          if (__DEV__) {
+            console.log('User profile creation via tRPC failed:', apiError instanceof Error ? apiError.message : 'Unknown error');
+          }
           // Continue anyway, the auth trigger might handle it
         }
 

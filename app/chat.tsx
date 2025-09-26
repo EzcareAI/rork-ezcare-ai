@@ -96,9 +96,13 @@ export default function ChatPage() {
           message: userMessage.content,
           response: assistantMessage.content
         });
-        console.log('✅ Chat saved successfully');
+        if (__DEV__) {
+          console.log('✅ Chat saved successfully');
+        }
       } catch (saveError) {
-        console.warn('⚠️ Failed to save chat to database:', saveError);
+        if (__DEV__) {
+          console.warn('⚠️ Failed to save chat to database:', saveError instanceof Error ? saveError.message : 'Unknown error');
+        }
         // Chat functionality continues to work even if saving fails
         // This is acceptable since the main AI functionality is independent
       }

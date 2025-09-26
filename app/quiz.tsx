@@ -261,52 +261,78 @@ export default function QuizPage() {
       const countryCodeMatch = quizData.countryCode.match(/^([+]\d+)/);
       const countryCode = countryCodeMatch ? countryCodeMatch[1] : '+1';
 
-      // Save to database via tRPC
-      const result = await saveQuizMutation.mutateAsync({
-        name: quizData.name,
-        phone: quizData.phone,
-        countryCode,
-        height: parseFloat(quizData.height.replace(/[^0-9.]/g, '')) || 0,
-        weight: parseFloat(quizData.weight.replace(/[^0-9.]/g, '')) || 0,
-        sleepHours: quizData.sleep === 'Less than 5 hours' ? 4 : 
-                   quizData.sleep === '5-6 hours' ? 5.5 :
-                   quizData.sleep === '7-8 hours' ? 7.5 : 9,
-        activityLevel: quizData.activity === 'Never' ? 'sedentary' :
-                      quizData.activity === '1-2 times per week' ? 'light' :
-                      quizData.activity === '3-4 times per week' ? 'moderate' :
-                      quizData.activity === '5+ times per week' ? 'active' : 'sedentary',
-        smoking: quizData.smoking !== 'Never',
-        alcoholFrequency: quizData.alcohol === 'Never' ? 'never' :
-                         quizData.alcohol === 'Occasionally' ? 'occasionally' :
-                         quizData.alcohol === '1-2 drinks per week' ? 'rarely' :
-                         quizData.alcohol === '3+ drinks per week' ? 'regularly' : 'never',
-        stressLevel: quizData.stress === 'Very low' ? 1 :
-                    quizData.stress === 'Low' ? 3 :
-                    quizData.stress === 'Moderate' ? 5 :
-                    quizData.stress === 'High' ? 7 :
-                    quizData.stress === 'Very high' ? 9 : 5,
-        dietQuality: quizData.diet === 'Very healthy' ? 'excellent' :
-                    quizData.diet === 'Mostly healthy' ? 'good' :
-                    quizData.diet === 'Average' ? 'fair' :
-                    quizData.diet === 'Needs improvement' ? 'poor' :
-                    quizData.diet === 'Poor' ? 'poor' : 'fair',
-        bmi,
-        bmiCategory: category.toLowerCase() as 'underweight' | 'normal' | 'overweight' | 'obese',
-        healthScore
-      });
-
-      if (result.success) {
-        // Navigate to results page
-        router.push({
-          pathname: '/quiz-result',
-          params: { resultId: result.quizResponse.id }
+      // Try to save to database via tRPC (optional - continue even if it fails)
+      let resultId = 'local-' + Date.now(); // Fallback ID
+      try {
+        const result = await saveQuizMutation.mutateAsync({
+          name: quizData.name,
+          phone: quizData.phone,
+          countryCode,
+          height: parseFloat(quizData.height.replace(/[^0-9.]/g, '')) || 0,
+          weight: parseFloat(quizData.weight.replace(/[^0-9.]/g, '')) || 0,
+          sleepHours: quizData.sleep === 'Less than 5 hours' ? 4 : 
+                     quizData.sleep === '5-6 hours' ? 5.5 :
+                     quizData.sleep === '7-8 hours' ? 7.5 : 9,
+          activityLevel: quizData.activity === 'Never' ? 'sedentary' :
+                        quizData.activity === '1-2 times per week' ? 'light' :
+                        quizData.activity === '3-4 times per week' ? 'moderate' :
+                        quizData.activity === '5+ times per week' ? 'active' : 'sedentary',
+          smoking: quizData.smoking !== 'Never',
+          alcoholFrequency: quizData.alcohol === 'Never' ? 'never' :
+                           quizData.alcohol === 'Occasionally' ? 'occasionally' :
+                           quizData.alcohol === '1-2 drinks per week' ? 'rarely' :
+                           quizData.alcohol === '3+ drinks per week' ? 'regularly' : 'never',
+          stressLevel: quizData.stress === 'Very low' ? 1 :
+                      quizData.stress === 'Low' ? 3 :
+                      quizData.stress === 'Moderate' ? 5 :
+                      quizData.stress === 'High' ? 7 :
+                      quizData.stress === 'Very high' ? 9 : 5,
+          dietQuality: quizData.diet === 'Very healthy' ? 'excellent' :
+                      quizData.diet === 'Mostly healthy' ? 'good' :
+                      quizData.diet === 'Average' ? 'fair' :
+                      quizData.diet === 'Needs improvement' ? 'poor' :
+                      quizData.diet === 'Poor' ? 'poor' : 'fair',
+          bmi,
+          bmiCategory: category.toLowerCase() as 'underweight' | 'normal' | 'overweight' | 'obese',
+          healthScore
         });
-      } else {
-        Alert.alert('Error', 'Failed to save quiz results. Please try again.');
+
+        if (result.success) {
+          resultId = result.quizResponse.id;
+          if (__DEV__) {
+            console.log('✅ Quiz result saved successfully');
+          }
+        } else {
+          if (__DEV__) {
+            console.warn('⚠️ Failed to save quiz result to database, using local result');
+          }
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('⚠️ Failed to save quiz result to database:', error instanceof Error ? error.message : 'Unknown error');
+          console.log('📱 Continuing with local result - quiz functionality will work offline');
+        }
+        // Continue with local result - the quiz functionality should work even without backend
       }
+
+      // Navigate to results page (works with both saved and local results)
+      router.push({
+        pathname: '/quiz-result',
+        params: { 
+          resultId,
+          // Pass the data as URL params for local results
+          localData: JSON.stringify({
+            name: quizData.name,
+            bmi,
+            bmiCategory: category,
+            healthScore,
+            recommendations
+          })
+        }
+      });
     } catch (error) {
-      console.error('Error saving quiz result:', error);
-      Alert.alert('Error', 'Failed to save quiz results. Please try again.');
+      console.error('Error processing quiz result:', error);
+      Alert.alert('Error', 'Failed to process quiz results. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

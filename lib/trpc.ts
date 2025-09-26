@@ -22,10 +22,12 @@ const getBaseUrl = () => {
   // Ensure baseUrl doesn't end with a slash to avoid double slashes
   baseUrl = baseUrl.replace(/\/$/, '');
   
-  console.log('🔍 tRPC getBaseUrl computed:', baseUrl);
-  console.log('🔍 EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET');
-  console.log('🔍 window.location.origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A');
-  console.log('🔍 Environment mode:', __DEV__ ? 'development' : 'production');
+  if (__DEV__) {
+    console.log('🔍 tRPC getBaseUrl computed:', baseUrl);
+    console.log('🔍 EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET');
+    console.log('🔍 window.location.origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A');
+    console.log('🔍 Environment mode:', __DEV__ ? 'development' : 'production');
+  }
   
   return baseUrl;
 };
@@ -33,7 +35,7 @@ const getBaseUrl = () => {
 
 
 // Custom fetch with retry logic and backend testing
-const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 1): Promise<Response> => {
+const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 2): Promise<Response> => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   
   // Validate URL input
@@ -41,18 +43,20 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
     throw new Error('Invalid URL provided to tRPC fetch');
   }
   
-  console.log('🔍 tRPC fetch URL:', url);
-  console.log('🔍 tRPC fetch options:', {
-    method: init?.method,
-    headers: init?.headers,
-    body: init?.body ? 'present' : 'none'
-  });
+  if (__DEV__) {
+    console.log('🔍 tRPC fetch URL:', url);
+    console.log('🔍 tRPC fetch options:', {
+      method: init?.method,
+      headers: init?.headers,
+      body: init?.body ? 'present' : 'none'
+    });
+  }
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       // Add timeout to prevent hanging requests
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       const response = await fetch(input, {
         ...init,
@@ -66,21 +70,27 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
       
       clearTimeout(timeoutId);
       
-      console.log(`✅ tRPC response status (attempt ${attempt + 1}):`, response.status);
-      console.log('✅ tRPC response content-type:', response.headers.get('content-type'));
+      if (__DEV__) {
+        console.log(`✅ tRPC response status (attempt ${attempt + 1}):`, response.status);
+        console.log('✅ tRPC response content-type:', response.headers.get('content-type'));
+      }
       
       // Check if response is HTML (error page) instead of JSON
       const contentType = response.headers.get('content-type');
       
       if (contentType && contentType.includes('text/html')) {
         const htmlText = await response.text();
-        console.error('❌ Received HTML response instead of JSON:', htmlText.substring(0, 200));
+        if (__DEV__) {
+          console.error('❌ Received HTML response instead of JSON:', htmlText.substring(0, 200));
+        }
         throw new Error(`Backend returned HTML instead of JSON. Backend may not be deployed properly.`);
       }
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ tRPC HTTP error:', response.status, errorText);
+        if (__DEV__) {
+          console.error('❌ tRPC HTTP error:', response.status, errorText);
+        }
         
         // Don't retry on client errors (4xx)
         if (response.status >= 400 && response.status < 500) {
@@ -89,7 +99,9 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
         
         // Retry on server errors (5xx) if we have attempts left
         if (attempt < maxRetries) {
-          console.log(`🔄 Retrying request (attempt ${attempt + 2}/${maxRetries + 1})...`);
+          if (__DEV__) {
+            console.log(`🔄 Retrying request (attempt ${attempt + 2}/${maxRetries + 1})...`);
+          }
           await new Promise((resolve) => setTimeout(() => resolve(undefined), 1500));
           continue;
         }
@@ -99,23 +111,29 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
       
       return response;
     } catch (error) {
-      console.error(`❌ tRPC fetch error (attempt ${attempt + 1}):`, error);
+      if (__DEV__) {
+        console.error(`❌ tRPC fetch error (attempt ${attempt + 1}):`, error);
+      }
       
       // Don't retry on certain errors
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           if (attempt < maxRetries) {
-            console.log(`🔄 Retrying after timeout (attempt ${attempt + 2}/${maxRetries + 1})...`);
-            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1500));
+            if (__DEV__) {
+              console.log(`🔄 Retrying after timeout (attempt ${attempt + 2}/${maxRetries + 1})...`);
+            }
+            await new Promise((resolve) => setTimeout(() => resolve(undefined), 2000));
             continue;
           }
           throw new Error('Request timeout - backend may be unavailable');
         }
         
-        if (error.message.includes('Failed to fetch')) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('Network request failed')) {
           if (attempt < maxRetries) {
-            console.log(`🔄 Retrying network error (attempt ${attempt + 2}/${maxRetries + 1})...`);
-            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1500));
+            if (__DEV__) {
+              console.log(`🔄 Retrying network error (attempt ${attempt + 2}/${maxRetries + 1})...`);
+            }
+            await new Promise((resolve) => setTimeout(() => resolve(undefined), 2000));
             continue;
           }
           
@@ -129,8 +147,10 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
       }
       
       // Wait before retrying
-      console.log(`🔄 Retrying after error (attempt ${attempt + 2}/${maxRetries + 1})...`);
-      await new Promise((resolve) => setTimeout(() => resolve(undefined), 1500));
+      if (__DEV__) {
+        console.log(`🔄 Retrying after error (attempt ${attempt + 2}/${maxRetries + 1})...`);
+      }
+      await new Promise((resolve) => setTimeout(() => resolve(undefined), 2000));
     }
   }
   
@@ -180,7 +200,7 @@ if (typeof window !== 'undefined' && __DEV__) {
       const result = await trpcClient.debug.ping.query();
       console.log('✅ tRPC connectivity test successful:', result);
     } catch (error) {
-      console.error('❌ tRPC connectivity test failed:', error);
+      console.warn('⚠️ tRPC connectivity test failed:', error instanceof Error ? error.message : 'Unknown error');
       // Test if backend is reachable at all
       try {
         const baseUrl = getBaseUrl();
@@ -191,17 +211,17 @@ if (typeof window !== 'undefined' && __DEV__) {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
           },
-          signal: AbortSignal.timeout(5000)
+          signal: AbortSignal.timeout(8000)
         });
         if (response.ok) {
           const data = await response.json();
           console.log('✅ Backend is reachable:', data);
-          console.log('❌ But tRPC endpoint failed - check tRPC configuration');
+          console.log('⚠️ But tRPC endpoint failed - this is expected if backend is not deployed');
         } else {
-          console.error('❌ Backend is not reachable:', response.status, response.statusText);
+          console.warn('⚠️ Backend is not reachable:', response.status, response.statusText);
         }
       } catch (backendError) {
-        console.error('❌ Backend connectivity test failed:', backendError);
+        console.warn('⚠️ Backend connectivity test failed - this is expected if backend is not deployed:', backendError instanceof Error ? backendError.message : 'Unknown error');
       }
     }
   }, 3000);
