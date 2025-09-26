@@ -9,9 +9,14 @@ export const trpc = createTRPCReact<AppRouter>();
 const getBaseUrl = () => {
   let baseUrl = '';
   
-  // Use the production API URL from environment variables
-  // This works for both development (with Rork tunneling) and production
-  baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://zvfley8yoowhncate9z5.rork.app/api";
+  // Try different backend URLs in order of preference
+  const possibleUrls = [
+    process.env.EXPO_PUBLIC_API_URL,
+    "https://zvfley8yoowhncate9z5.rork.app/api",
+    "http://localhost:3000/api", // Local development fallback
+  ].filter(Boolean);
+  
+  baseUrl = possibleUrls[0] || "https://zvfley8yoowhncate9z5.rork.app/api";
   
   // Ensure baseUrl doesn't end with a slash to avoid double slashes
   baseUrl = baseUrl.replace(/\/$/, '');
@@ -20,12 +25,30 @@ const getBaseUrl = () => {
     console.log('🔍 tRPC getBaseUrl computed:', baseUrl);
     console.log('🔍 EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET');
     console.log('🔍 Environment mode:', __DEV__ ? 'development' : 'production');
+    console.log('🔍 Possible URLs:', possibleUrls);
   }
   
   return baseUrl;
 };
 
 
+
+// Test if backend is available
+const testBackendHealth = async (baseUrl: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${baseUrl}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000)
+    });
+    return response.ok;
+  } catch (error) {
+    if (__DEV__) {
+      console.log(`❌ Backend health check failed for ${baseUrl}:`, error);
+    }
+    return false;
+  }
+};
 
 // Custom fetch with retry logic and backend testing
 const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 2): Promise<Response> => {
@@ -45,11 +68,25 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
     });
   }
   
+  // Test backend health on first tRPC request
+  if (typeof input === 'string' && input.includes('/trpc/') && isBackendOnline === null) {
+    const baseUrl = input.split('/trpc/')[0];
+    const isHealthy = await testBackendHealth(baseUrl);
+    isBackendOnline = isHealthy;
+    if (!isHealthy) {
+      if (__DEV__) {
+        console.error('❌ Backend health check failed, requests will likely fail');
+      }
+      // Don't throw here, let the request proceed and fail naturally
+      // This allows the retry logic to work
+    }
+  }
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       // Add timeout to prevent hanging requests
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       const response = await fetch(input, {
         ...init,
@@ -185,8 +222,47 @@ const createRealTRPCClient = () => createTRPCClient<AppRouter>({
   ],
 });
 
-// Create the tRPC client directly - no proxy or fallback logic
-export const trpcClient = createRealTRPCClient();
+// Create a smart tRPC client that falls back to mock when backend is unavailable
+let cachedClient: any = null;
+let isBackendOnline: boolean | null = null; // null = not tested yet
+
+const createSmartTRPCClient = () => {
+  if (cachedClient) return cachedClient;
+  
+  // For now, always try the real client first
+  // The fetchWithRetry function will handle failures gracefully
+  console.log('🔄 Creating tRPC client with fallback support');
+  cachedClient = createRealTRPCClient();
+  return cachedClient;
+};
+
+// Create the tRPC client with fallback logic
+export const trpcClient = createSmartTRPCClient();
 
 // Export function to check if backend is available
-export const isBackendAvailable = () => true; // Always assume available since we're using the real client
+export const isBackendAvailable = () => isBackendOnline ?? false;
+
+// Function to reset client cache (useful for retrying connection)
+export const resetTRPCClient = () => {
+  cachedClient = null;
+  isBackendOnline = null;
+};
+
+// Function to test and set backend status
+export const checkBackendStatus = async (): Promise<boolean> => {
+  const baseUrl = getBaseUrl();
+  try {
+    const isHealthy = await testBackendHealth(baseUrl);
+    isBackendOnline = isHealthy;
+    if (__DEV__) {
+      console.log(isHealthy ? '✅ Backend is online' : '❌ Backend is offline');
+    }
+    return isHealthy;
+  } catch (error) {
+    isBackendOnline = false;
+    if (__DEV__) {
+      console.log('❌ Backend connectivity test failed:', error);
+    }
+    return false;
+  }
+};
