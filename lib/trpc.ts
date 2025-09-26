@@ -30,34 +30,10 @@ const getBaseUrl = () => {
   return baseUrl;
 };
 
-// Test backend connectivity
-const testBackendConnectivity = async (baseUrl: string): Promise<boolean> => {
-  try {
-    console.log('🔍 Testing backend connectivity to:', `${baseUrl}/hello`);
-    const response = await fetch(`${baseUrl}/hello`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      signal: AbortSignal.timeout(5000)
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Backend connectivity test successful:', data);
-      return true;
-    } else {
-      console.error('❌ Backend connectivity test failed:', response.status, response.statusText);
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Backend connectivity test error:', error);
-    return false;
-  }
-};
+
 
 // Custom fetch with retry logic and backend testing
-const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 2): Promise<Response> => {
+const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 1): Promise<Response> => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   
   // Validate URL input
@@ -76,7 +52,7 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
     try {
       // Add timeout to prevent hanging requests
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
       
       const response = await fetch(input, {
         ...init,
@@ -99,7 +75,7 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
       if (contentType && contentType.includes('text/html')) {
         const htmlText = await response.text();
         console.error('❌ Received HTML response instead of JSON:', htmlText.substring(0, 200));
-        throw new Error(`API endpoint returned HTML instead of JSON. Backend may not be properly deployed.`);
+        throw new Error(`Backend returned HTML instead of JSON. Backend may not be deployed properly.`);
       }
       
       if (!response.ok) {
@@ -114,7 +90,7 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
         // Retry on server errors (5xx) if we have attempts left
         if (attempt < maxRetries) {
           console.log(`🔄 Retrying request (attempt ${attempt + 2}/${maxRetries + 1})...`);
-          await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000 * (attempt + 1))); // Exponential backoff
+          await new Promise((resolve) => setTimeout(() => resolve(undefined), 1500));
           continue;
         }
         
@@ -130,7 +106,7 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
         if (error.name === 'AbortError') {
           if (attempt < maxRetries) {
             console.log(`🔄 Retrying after timeout (attempt ${attempt + 2}/${maxRetries + 1})...`);
-            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000 * (attempt + 1)));
+            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1500));
             continue;
           }
           throw new Error('Request timeout - backend may be unavailable');
@@ -139,35 +115,11 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
         if (error.message.includes('Failed to fetch')) {
           if (attempt < maxRetries) {
             console.log(`🔄 Retrying network error (attempt ${attempt + 2}/${maxRetries + 1})...`);
-            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000 * (attempt + 1)));
+            await new Promise((resolve) => setTimeout(() => resolve(undefined), 1500));
             continue;
           }
           
-          // Test if it's a network issue or backend issue on final attempt
-          try {
-            const baseUrl = getBaseUrl();
-            const backendReachable = await testBackendConnectivity(baseUrl);
-            
-            if (backendReachable) {
-              throw new Error('Backend is reachable but tRPC endpoint failed. Check tRPC configuration.');
-            } else {
-              // Test general internet connectivity
-              const testResponse = await fetch('https://httpbin.org/get', { 
-                method: 'GET',
-                signal: AbortSignal.timeout(5000)
-              });
-              if (testResponse.ok) {
-                throw new Error('Network is working but backend is unreachable. Backend may be down or URL incorrect.');
-              } else {
-                throw new Error('Network connectivity issue detected.');
-              }
-            }
-          } catch (testError) {
-            if (testError instanceof Error && testError.message.includes('Backend is reachable')) {
-              throw testError;
-            }
-            throw new Error('Network connectivity issue - check internet connection.');
-          }
+          throw new Error('Network connectivity issue - check internet connection.');
         }
       }
       
@@ -178,7 +130,7 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
       
       // Wait before retrying
       console.log(`🔄 Retrying after error (attempt ${attempt + 2}/${maxRetries + 1})...`);
-      await new Promise((resolve) => setTimeout(() => resolve(undefined), 1000 * (attempt + 1)));
+      await new Promise((resolve) => setTimeout(() => resolve(undefined), 1500));
     }
   }
   
@@ -219,9 +171,9 @@ export const trpcClient = createTRPCClient<AppRouter>({
   ],
 });
 
-// Test tRPC connectivity on initialization
-if (typeof window !== 'undefined') {
-  // Only run on client side
+// Test tRPC connectivity on initialization (only in development)
+if (typeof window !== 'undefined' && __DEV__) {
+  // Only run on client side in development
   setTimeout(async () => {
     try {
       console.log('🔍 Testing tRPC connectivity on initialization...');
@@ -232,15 +184,25 @@ if (typeof window !== 'undefined') {
       // Test if backend is reachable at all
       try {
         const baseUrl = getBaseUrl();
-        const response = await fetch(`${baseUrl}/hello`);
+        console.log('🔍 Testing backend connectivity at:', `${baseUrl}/hello`);
+        const response = await fetch(`${baseUrl}/hello`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(5000)
+        });
         if (response.ok) {
-          console.log('✅ Backend is reachable, but tRPC failed');
+          const data = await response.json();
+          console.log('✅ Backend is reachable:', data);
+          console.log('❌ But tRPC endpoint failed - check tRPC configuration');
         } else {
-          console.error('❌ Backend is not reachable');
+          console.error('❌ Backend is not reachable:', response.status, response.statusText);
         }
       } catch (backendError) {
         console.error('❌ Backend connectivity test failed:', backendError);
       }
     }
-  }, 1000);
+  }, 3000);
 }

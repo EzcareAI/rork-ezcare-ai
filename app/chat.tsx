@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Send, ArrowLeft, Zap, MessageSquare } from 'lucide-react-native';
 import { useAuth } from '@/contexts/auth-context';
-import { trpc, trpcClient } from '@/lib/trpc';
+import { trpc } from '@/lib/trpc';
 
 interface Message {
   id: string;
@@ -90,7 +90,7 @@ export default function ChatPage() {
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Save conversation to database
+      // Save conversation to database (optional - don't fail if backend is down)
       try {
         await saveChatMutation.mutateAsync({
           message: userMessage.content,
@@ -98,15 +98,9 @@ export default function ChatPage() {
         });
         console.log('✅ Chat saved successfully');
       } catch (saveError) {
-        console.error('❌ Failed to save chat:', saveError);
-        // Test basic tRPC connectivity
-        try {
-          const testResult = await trpcClient.debug.ping.query();
-          console.log('✅ tRPC debug ping successful:', testResult);
-        } catch (debugError) {
-          console.error('❌ tRPC debug ping failed:', debugError);
-        }
-        // Don't show error to user as the chat still works
+        console.warn('⚠️ Failed to save chat to database:', saveError);
+        // Chat functionality continues to work even if saving fails
+        // This is acceptable since the main AI functionality is independent
       }
     } catch (error) {
       console.error('Error sending message:', error);
