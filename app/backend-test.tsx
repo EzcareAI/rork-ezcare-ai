@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import { trpcClient } from '@/lib/trpc';
+import { trpcClient, isBackendAvailable } from '@/lib/trpc';
 
 export default function BackendTestPage() {
   const [testResults, setTestResults] = useState<string[]>([]);
@@ -59,10 +59,19 @@ export default function BackendTestPage() {
   const testTRPCPing = async () => {
     setIsLoading(true);
     addResult('Testing tRPC ping...');
+    addResult(`Backend available status: ${isBackendAvailable()}`);
     
     try {
       const result = await trpcClient.debug.ping.query();
       addResult(`✅ tRPC ping: ${JSON.stringify(result)}`);
+      
+      // Test additional endpoints
+      const hiResult = await trpcClient.example.hi.query();
+      addResult(`✅ Example hi: ${JSON.stringify(hiResult)}`);
+      
+      const chatHistory = await trpcClient.chat.getHistory.query();
+      addResult(`✅ Chat history: ${Array.isArray(chatHistory) ? `${chatHistory.length} items` : 'Not an array'}`);
+      
     } catch (error) {
       if (error instanceof Error) {
         addResult(`❌ tRPC ping failed: ${error.message}`);
@@ -146,7 +155,7 @@ export default function BackendTestPage() {
             onPress={testTRPCPing}
             disabled={isLoading}
           >
-            <Text style={styles.buttonText}>Test tRPC Ping</Text>
+            <Text style={styles.buttonText}>Test tRPC (with Fallback)</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 

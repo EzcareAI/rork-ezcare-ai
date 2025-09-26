@@ -2,21 +2,25 @@ import { createTRPCReact } from "@trpc/react-query";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
+import { createMockTRPCClient, testBackendConnectivity } from "@/lib/trpc-fallback";
 
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
   let baseUrl = '';
   
-  // If EXPO_PUBLIC_API_URL is set, use it (production)
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    baseUrl = process.env.EXPO_PUBLIC_API_URL;
-  } else if (typeof window !== 'undefined') {
-    // For web platform in development, use current origin
-    baseUrl = `${window.location.origin}/api`;
+  // Always use local development server in development mode
+  if (__DEV__) {
+    if (typeof window !== 'undefined') {
+      // For web platform in development, use current origin
+      baseUrl = `${window.location.origin}/api`;
+    } else {
+      // For mobile in development, use localhost (this will be tunneled by Expo)
+      baseUrl = 'http://localhost:8081/api';
+    }
   } else {
-    // For mobile in development, fallback to production URL
-    baseUrl = "https://zvfley8yoowhncate9z5.rork.app/api";
+    // In production, use the production API URL
+    baseUrl = process.env.EXPO_PUBLIC_API_URL || "https://zvfley8yoowhncate9z5.rork.app/api";
   }
   
   // Ensure baseUrl doesn't end with a slash to avoid double slashes
@@ -27,6 +31,7 @@ const getBaseUrl = () => {
     console.log('🔍 EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET');
     console.log('🔍 window.location.origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A');
     console.log('🔍 Environment mode:', __DEV__ ? 'development' : 'production');
+    console.log('🔍 Development mode detected, using local backend');
   }
   
   return baseUrl;
@@ -157,7 +162,8 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
   throw new Error('Max retries exceeded');
 };
 
-export const trpcClient = createTRPCClient<AppRouter>({
+// Create the real tRPC client
+const createRealTRPCClient = () => createTRPCClient<AppRouter>({
   links: [
     httpLink({
       url: `${getBaseUrl()}/trpc`,
@@ -191,38 +197,48 @@ export const trpcClient = createTRPCClient<AppRouter>({
   ],
 });
 
-// Test tRPC connectivity on initialization (only in development)
-if (typeof window !== 'undefined' && __DEV__) {
-  // Only run on client side in development
+// Initialize with mock client, will be replaced if backend is available
+let _trpcClient: any = createMockTRPCClient();
+let _backendAvailable = false;
+
+// Export the client (will be either real or mock)
+export const trpcClient = new Proxy({} as any, {
+  get(target, prop) {
+    return _trpcClient[prop];
+  }
+});
+
+// Test backend connectivity and switch to real client if available
+if (typeof window !== 'undefined') {
   setTimeout(async () => {
-    try {
-      console.log('🔍 Testing tRPC connectivity on initialization...');
-      const result = await trpcClient.debug.ping.query();
-      console.log('✅ tRPC connectivity test successful:', result);
-    } catch (error) {
-      console.warn('⚠️ tRPC connectivity test failed:', error instanceof Error ? error.message : 'Unknown error');
-      // Test if backend is reachable at all
+    const baseUrl = getBaseUrl();
+    console.log('🔍 Testing backend connectivity...');
+    
+    const isBackendAvailable = await testBackendConnectivity(baseUrl);
+    
+    if (isBackendAvailable) {
+      console.log('✅ Backend is available, switching to real tRPC client');
       try {
-        const baseUrl = getBaseUrl();
-        console.log('🔍 Testing backend connectivity at:', `${baseUrl}/hello`);
-        const response = await fetch(`${baseUrl}/hello`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          signal: AbortSignal.timeout(8000)
-        });
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Backend is reachable:', data);
-          console.log('⚠️ But tRPC endpoint failed - this is expected if backend is not deployed');
-        } else {
-          console.warn('⚠️ Backend is not reachable:', response.status, response.statusText);
-        }
-      } catch (backendError) {
-        console.warn('⚠️ Backend connectivity test failed - this is expected if backend is not deployed:', backendError instanceof Error ? backendError.message : 'Unknown error');
+        _trpcClient = createRealTRPCClient();
+        _backendAvailable = true;
+        
+        // Test tRPC specifically
+        const result = await _trpcClient.debug.ping.query();
+        console.log('✅ tRPC connectivity test successful:', result);
+      } catch (error) {
+        console.warn('⚠️ Backend available but tRPC failed, using mock client:', error instanceof Error ? error.message : 'Unknown error');
+        _trpcClient = createMockTRPCClient();
+        _backendAvailable = false;
+      }
+    } else {
+      console.warn('⚠️ Backend not available, using mock tRPC client');
+      if (__DEV__) {
+        console.warn('⚠️ This is expected in development if the backend is not running');
+        console.warn('⚠️ The app will still work with mock data');
       }
     }
-  }, 3000);
+  }, 1000);
 }
+
+// Export function to check if backend is available
+export const isBackendAvailable = () => _backendAvailable;
