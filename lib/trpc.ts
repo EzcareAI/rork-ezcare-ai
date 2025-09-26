@@ -226,18 +226,28 @@ const createRealTRPCClient = () => createTRPCClient<AppRouter>({
 let cachedClient: any = null;
 let isBackendOnline: boolean | null = null; // null = not tested yet
 
-const createSmartTRPCClient = () => {
+const createSmartTRPCClient = async () => {
   if (cachedClient) return cachedClient;
   
-  // For now, always try the real client first
-  // The fetchWithRetry function will handle failures gracefully
-  console.log('🔄 Creating tRPC client with fallback support');
-  cachedClient = createRealTRPCClient();
+  // Test backend connectivity first
+  const baseUrl = getBaseUrl();
+  const isHealthy = await testBackendHealth(baseUrl);
+  isBackendOnline = isHealthy;
+  
+  if (isHealthy) {
+    console.log('✅ Backend is online, using real tRPC client');
+    cachedClient = createRealTRPCClient();
+  } else {
+    console.log('❌ Backend is offline, using mock tRPC client');
+    const { createMockTRPCClient } = await import('@/lib/trpc-fallback');
+    cachedClient = createMockTRPCClient();
+  }
+  
   return cachedClient;
 };
 
 // Create the tRPC client with fallback logic
-export const trpcClient = createSmartTRPCClient();
+export const trpcClient = createRealTRPCClient(); // Always use real client, let retry logic handle failures
 
 // Export function to check if backend is available
 export const isBackendAvailable = () => isBackendOnline ?? false;

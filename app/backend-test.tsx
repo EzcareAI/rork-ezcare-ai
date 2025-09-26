@@ -62,15 +62,17 @@ export default function BackendTestPage() {
     addResult(`Backend available status: ${isBackendAvailable()}`);
     
     try {
-      const result = await trpcClient.debug.ping.query();
-      addResult(`✅ tRPC ping: ${JSON.stringify(result)}`);
+      // Try a simple tRPC call first
+      const result = await trpcClient.example.hi.query();
+      addResult(`✅ tRPC example.hi: ${JSON.stringify(result)}`);
       
-      // Test additional endpoints
-      const hiResult = await trpcClient.example.hi.query();
-      addResult(`✅ Example hi: ${JSON.stringify(hiResult)}`);
-      
-      const chatHistory = await trpcClient.chat.getHistory.query();
-      addResult(`✅ Chat history: ${Array.isArray(chatHistory) ? `${chatHistory.length} items` : 'Not an array'}`);
+      // Test additional endpoints if first one works
+      try {
+        const chatHistory = await trpcClient.chat.getHistory.query({ userId: 'test-user-id' });
+        addResult(`✅ Chat history: ${Array.isArray(chatHistory) ? `${chatHistory.length} items` : 'Not an array'}`);
+      } catch (chatError) {
+        addResult(`⚠️ Chat history failed: ${chatError}`);
+      }
       
     } catch (error) {
       if (error instanceof Error) {
