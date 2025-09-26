@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Send, ArrowLeft, Zap, MessageSquare } from 'lucide-react-native';
 import { useAuth } from '@/contexts/auth-context';
-import { trpc } from '@/lib/trpc';
+import { trpc, trpcClient } from '@/lib/trpc';
 
 interface Message {
   id: string;
@@ -96,8 +96,16 @@ export default function ChatPage() {
           message: userMessage.content,
           response: assistantMessage.content
         });
+        console.log('✅ Chat saved successfully');
       } catch (saveError) {
-        console.error('Failed to save chat:', saveError);
+        console.error('❌ Failed to save chat:', saveError);
+        // Test basic tRPC connectivity
+        try {
+          const testResult = await trpcClient.debug.ping.query();
+          console.log('✅ tRPC debug ping successful:', testResult);
+        } catch (debugError) {
+          console.error('❌ tRPC debug ping failed:', debugError);
+        }
         // Don't show error to user as the chat still works
       }
     } catch (error) {

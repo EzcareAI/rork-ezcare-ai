@@ -22,10 +22,19 @@ try {
 
 // Enable CORS with proper configuration
 app.use("*", cors({
-  origin: ['*'], // Allow all origins for now to fix the immediate issue
+  origin: (origin, c) => {
+    if (!origin || !origin.trim()) {
+      console.log('CORS: No origin provided, allowing');
+      return '*';
+    }
+    console.log('CORS origin check:', origin);
+    // Allow all origins for now to fix connectivity issues
+    return origin;
+  },
   credentials: true,
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source', 'Accept', 'Origin', 'X-Requested-With'],
+  exposeHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // Add request logging middleware
@@ -332,6 +341,12 @@ app.use(
     console.log('🔍 tRPC request:', c.req.method, c.req.url);
     console.log('🔍 tRPC request headers:', Object.fromEntries(c.req.raw.headers.entries()));
     
+    // Handle preflight requests
+    if (c.req.method === 'OPTIONS') {
+      console.log('🔍 Handling CORS preflight for tRPC');
+      return c.json({ ok: true }, 200);
+    }
+    
     await next();
     console.log('🔍 tRPC response status:', c.res.status);
   },
@@ -343,7 +358,8 @@ app.use(
         path,
         type,
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
+        cause: error.cause
       });
     },
   })
@@ -352,13 +368,22 @@ app.use(
 // Catch-all route for debugging
 app.all('*', (c) => {
   console.log('🔍 Catch-all route hit:', c.req.method, c.req.url);
+  console.log('🔍 Request headers:', Object.fromEntries(c.req.raw.headers.entries()));
   console.log('Available routes: /, /hello, /env-test, /checkout, /cancel-subscription, /stripe/webhook, /trpc/*');
+  
+  // Handle OPTIONS requests for any route
+  if (c.req.method === 'OPTIONS') {
+    console.log('🔍 Handling CORS preflight for catch-all');
+    return c.json({ ok: true }, 200);
+  }
+  
   return c.json({ 
     error: 'Route not found', 
     method: c.req.method, 
     url: c.req.url,
     timestamp: new Date().toISOString(),
-    availableRoutes: ['/', '/hello', '/env-test', '/checkout', '/cancel-subscription', '/stripe/webhook', '/trpc/*']
+    availableRoutes: ['/', '/hello', '/env-test', '/checkout', '/cancel-subscription', '/stripe/webhook', '/trpc/*'],
+    headers: Object.fromEntries(c.req.raw.headers.entries())
   }, 404);
 });
 

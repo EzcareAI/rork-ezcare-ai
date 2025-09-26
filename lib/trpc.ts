@@ -30,7 +30,33 @@ const getBaseUrl = () => {
   return baseUrl;
 };
 
-// Custom fetch with retry logic
+// Test backend connectivity
+const testBackendConnectivity = async (baseUrl: string): Promise<boolean> => {
+  try {
+    console.log('🔍 Testing backend connectivity to:', `${baseUrl}/hello`);
+    const response = await fetch(`${baseUrl}/hello`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Backend connectivity test successful:', data);
+      return true;
+    } else {
+      console.error('❌ Backend connectivity test failed:', response.status, response.statusText);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Backend connectivity test error:', error);
+    return false;
+  }
+};
+
+// Custom fetch with retry logic and backend testing
 const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 2): Promise<Response> => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   
@@ -119,16 +145,27 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
           
           // Test if it's a network issue or backend issue on final attempt
           try {
-            const testResponse = await fetch('https://httpbin.org/get', { 
-              method: 'GET',
-              signal: AbortSignal.timeout(5000)
-            });
-            if (testResponse.ok) {
-              throw new Error('Network is working but backend is unreachable. Backend may be down or URL incorrect.');
+            const baseUrl = getBaseUrl();
+            const backendReachable = await testBackendConnectivity(baseUrl);
+            
+            if (backendReachable) {
+              throw new Error('Backend is reachable but tRPC endpoint failed. Check tRPC configuration.');
             } else {
-              throw new Error('Network connectivity issue detected.');
+              // Test general internet connectivity
+              const testResponse = await fetch('https://httpbin.org/get', { 
+                method: 'GET',
+                signal: AbortSignal.timeout(5000)
+              });
+              if (testResponse.ok) {
+                throw new Error('Network is working but backend is unreachable. Backend may be down or URL incorrect.');
+              } else {
+                throw new Error('Network connectivity issue detected.');
+              }
             }
-          } catch {
+          } catch (testError) {
+            if (testError instanceof Error && testError.message.includes('Backend is reachable')) {
+              throw testError;
+            }
             throw new Error('Network connectivity issue - check internet connection.');
           }
         }
@@ -159,15 +196,51 @@ export const trpcClient = createTRPCClient<AppRouter>({
           const { supabase } = await import('@/lib/supabase');
           const { data: { session } } = await supabase.auth.getSession();
           
-          return {
-            authorization: session?.user?.id ? `Bearer ${session.user.id}` : '',
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
           };
+          
+          if (session?.user?.id) {
+            headers.authorization = `Bearer ${session.user.id}`;
+          }
+          
+          return headers;
         } catch (error) {
           console.warn('Failed to get Supabase session for tRPC headers:', error);
-          return {};
+          return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          };
         }
       },
       fetch: fetchWithRetry,
     }),
   ],
 });
+
+// Test tRPC connectivity on initialization
+if (typeof window !== 'undefined') {
+  // Only run on client side
+  setTimeout(async () => {
+    try {
+      console.log('🔍 Testing tRPC connectivity on initialization...');
+      const result = await trpcClient.debug.ping.query();
+      console.log('✅ tRPC connectivity test successful:', result);
+    } catch (error) {
+      console.error('❌ tRPC connectivity test failed:', error);
+      // Test if backend is reachable at all
+      try {
+        const baseUrl = getBaseUrl();
+        const response = await fetch(`${baseUrl}/hello`);
+        if (response.ok) {
+          console.log('✅ Backend is reachable, but tRPC failed');
+        } else {
+          console.error('❌ Backend is not reachable');
+        }
+      } catch (backendError) {
+        console.error('❌ Backend connectivity test failed:', backendError);
+      }
+    }
+  }, 1000);
+}
