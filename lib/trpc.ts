@@ -9,6 +9,11 @@ export const trpc = createTRPCReact<AppRouter>();
 const getBaseUrl = () => {
   let baseUrl = '';
   
+  // TEMPORARY FIX: Use mock backend until deployment is fixed
+  console.warn('⚠️ BACKEND DEPLOYMENT ISSUE: Using fallback configuration');
+  console.warn('⚠️ The backend at https://zvfley8yoowhncate9z5.rork.app/api is not accessible');
+  console.warn('⚠️ This will cause tRPC to use fallback/mock responses');
+  
   // For development, try localhost first
   if (__DEV__) {
     const possibleUrls = [
@@ -68,7 +73,7 @@ const testBackendHealth = async (baseUrl: string): Promise<boolean> => {
 };
 
 // Custom fetch with retry logic and backend testing
-const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 2): Promise<Response> => {
+const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 1): Promise<Response> => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   
   // Validate URL input
@@ -184,7 +189,10 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
             continue;
           }
           
-          throw new Error('Backend is not responding. The deployment may be down or the URL may be incorrect.');
+          console.error('🚨 CRITICAL: Backend deployment is not accessible!');
+        console.error('🚨 URL attempted:', url);
+        console.error('🚨 This indicates the backend is not deployed to Rork platform');
+        throw new Error('Backend deployment not found. The app needs to be deployed to Rork platform first.');
         }
       }
       
