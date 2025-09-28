@@ -24,6 +24,20 @@ const getBaseUrl = () => {
   return baseUrl;
 };
 
+// Test if the backend URL is accessible
+const testBackendUrl = async (url: string): Promise<boolean> => {
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000)
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+};
+
 // Test backend connectivity
 const testBackendConnectivity = async (): Promise<void> => {
   const baseUrl = getBaseUrl();

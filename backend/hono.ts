@@ -67,6 +67,15 @@ app.get("/", (c) => {
   });
 });
 
+// Additional health check for debugging
+app.get("/health", (c) => {
+  return c.json({ 
+    status: "healthy", 
+    message: "Backend is operational",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Simple test route
 app.get("/hello", (c) => c.json({ message: "Hello from minimal backend 🎉" }));
 

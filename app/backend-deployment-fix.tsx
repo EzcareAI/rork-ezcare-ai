@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
@@ -19,6 +19,9 @@ export default function BackendDeploymentFix() {
   const runDeploymentTests = async () => {
     setIsRunning(true);
     setTestResults([]);
+
+    // Add a small delay to show the pending state
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Test 1: Check if the deployed URL is accessible
     try {
@@ -95,6 +98,11 @@ export default function BackendDeploymentFix() {
     setIsRunning(false);
   };
 
+  // Run tests automatically on component mount
+  useEffect(() => {
+    runDeploymentTests();
+  }, []);
+
   const showDetails = (result: typeof testResults[0]) => {
     if (result.details) {
       console.log(`${result.test} Details:`, result.details);
@@ -155,6 +163,26 @@ export default function BackendDeploymentFix() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {testResults.length > 0 && (
+          <View style={styles.summary}>
+            <Text style={styles.summaryTitle}>Diagnosis Summary:</Text>
+            {testResults.every(r => r.status === 'success') ? (
+              <View style={styles.successSummary}>
+                <Text style={styles.successText}>✅ All tests passed! Backend is properly deployed.</Text>
+                <Text style={styles.successSubtext}>Your tRPC errors should now be resolved.</Text>
+              </View>
+            ) : (
+              <View style={styles.errorSummary}>
+                <Text style={styles.errorText}>❌ Backend deployment issues detected.</Text>
+                <Text style={styles.errorSubtext}>
+                  The backend is not properly deployed to the Rork platform. 
+                  This needs to be fixed by the platform administrator.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={styles.instructions}>
           <Text style={styles.instructionsTitle}>Common Issues & Solutions:</Text>
@@ -286,5 +314,48 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 8,
     lineHeight: 20,
+  },
+  summary: {
+    marginBottom: 20,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#333',
+  },
+  successSummary: {
+    backgroundColor: '#f0f9ff',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#10b981',
+  },
+  successText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#059669',
+    marginBottom: 4,
+  },
+  successSubtext: {
+    fontSize: 14,
+    color: '#065f46',
+  },
+  errorSummary: {
+    backgroundColor: '#fef2f2',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  errorText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#dc2626',
+    marginBottom: 4,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: '#7f1d1d',
   },
 });
