@@ -1,125 +1,148 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Stack } from 'expo-router';
+import { testBackendConnectivity } from '@/lib/trpc-fallback';
+
+type TestResult = {
+  timestamp: string;
+  message: string;
+  type: 'info' | 'success' | 'error' | 'warning';
+};
 
 export default function BackendConnectivitySimple() {
-  const [results, setResults] = useState<string[]>([]);
+  const [results, setResults] = useState<TestResult[]>([]);
   const [testing, setTesting] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
 
-  const addResult = (message: string) => {
-    setResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  const addResult = (message: string, type: TestResult['type'] = 'info') => {
+    setResults(prev => [...prev, {
+      timestamp: new Date().toLocaleTimeString(),
+      message,
+      type
+    }]);
   };
 
-  const testBackendConnectivity = async () => {
+  const testBackend = async () => {
     setTesting(true);
     setResults([]);
     
-    const baseUrl = 'https://zvfley8yoowhncate9z5.rork.app';
+    const baseUrl = 'https://zvfley8yoowhncate9z5.rork.app/api';
     
-    // Test 1: Basic health check
-    addResult('🔍 Testing basic health check...');
-    try {
-      const response = await fetch(`${baseUrl}/api`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000)
-      });
+    addResult('🔍 Starting backend connectivity test...', 'info');
+    addResult(`🔍 Testing URL: ${baseUrl}`, 'info');
+    
+    // Test using the improved connectivity function
+    const isConnected = await testBackendConnectivity(baseUrl);
+    
+    if (isConnected) {
+      addResult('✅ Backend is accessible!', 'success');
+      setBackendStatus('online');
       
-      addResult(`✅ Health check response: ${response.status} ${response.statusText}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        addResult(`✅ Health check data: ${JSON.stringify(data, null, 2)}`);
-      } else {
-        const text = await response.text();
-        addResult(`❌ Health check error: ${text}`);
+      // Test tRPC endpoint if basic connectivity works
+      addResult('🔍 Testing tRPC endpoint...', 'info');
+      try {
+        const response = await fetch(`${baseUrl}/trpc/example.hi`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(10000)
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          addResult(`✅ tRPC working: ${JSON.stringify(data)}`, 'success');
+        } else {
+          addResult(`⚠️ tRPC endpoint returned ${response.status}`, 'warning');
+        }
+      } catch (error) {
+        addResult(`❌ tRPC test failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       }
-    } catch (error) {
-      addResult(`❌ Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-
-    // Test 2: Simple endpoint
-    addResult('🔍 Testing simple endpoint...');
-    try {
-      const response = await fetch(`${baseUrl}/api/hello`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000)
-      });
-      
-      addResult(`✅ Hello endpoint response: ${response.status} ${response.statusText}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        addResult(`✅ Hello endpoint data: ${JSON.stringify(data, null, 2)}`);
-      } else {
-        const text = await response.text();
-        addResult(`❌ Hello endpoint error: ${text}`);
-      }
-    } catch (error) {
-      addResult(`❌ Hello endpoint failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-
-    // Test 3: tRPC endpoint
-    addResult('🔍 Testing tRPC endpoint...');
-    try {
-      const response = await fetch(`${baseUrl}/api/trpc/example.hi`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000)
-      });
-      
-      addResult(`✅ tRPC endpoint response: ${response.status} ${response.statusText}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        addResult(`✅ tRPC endpoint data: ${JSON.stringify(data, null, 2)}`);
-      } else {
-        const text = await response.text();
-        addResult(`❌ tRPC endpoint error: ${text}`);
-      }
-    } catch (error) {
-      addResult(`❌ tRPC endpoint failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } else {
+      addResult('❌ Backend is not accessible', 'error');
+      setBackendStatus('offline');
+      addResult('🚨 BACKEND DEPLOYMENT ISSUE DETECTED', 'error');
+      addResult('📋 Possible causes:', 'warning');
+      addResult('   • Backend not deployed to Rork platform', 'warning');
+      addResult('   • Deployment failed or crashed', 'warning');
+      addResult('   • Network connectivity issues', 'warning');
+      addResult('   • Environment variables not configured', 'warning');
     }
 
     setTesting(false);
   };
 
+  const showDeploymentHelp = () => {
+    Alert.alert(
+      'Backend Deployment Help',
+      'The backend appears to be offline. This means:\n\n' +
+      '1. The app is not deployed to the Rork platform\n' +
+      '2. The deployment may have failed\n' +
+      '3. Environment variables may be missing\n\n' +
+      'Contact support to resolve deployment issues.',
+      [{ text: 'OK' }]
+    );
+  };
+
   useEffect(() => {
-    testBackendConnectivity();
+    testBackend();
   }, []);
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Backend Connectivity Test' }} />
+      <Stack.Screen options={{ title: 'Backend Status' }} />
       
       <View style={styles.header}>
-        <Text style={styles.title}>Backend Connectivity Test</Text>
-        <TouchableOpacity 
-          style={[styles.button, testing && styles.buttonDisabled]} 
-          onPress={testBackendConnectivity}
-          disabled={testing}
-        >
-          <Text style={styles.buttonText}>
-            {testing ? 'Testing...' : 'Test Again'}
+        <Text style={styles.title}>Backend Status</Text>
+        
+        <View style={styles.statusContainer}>
+          <View style={[
+            styles.statusIndicator,
+            backendStatus === 'online' && styles.statusOnline,
+            backendStatus === 'offline' && styles.statusOffline,
+            backendStatus === 'unknown' && styles.statusUnknown
+          ]} />
+          <Text style={styles.statusText}>
+            {backendStatus === 'online' && '✅ Backend Online'}
+            {backendStatus === 'offline' && '❌ Backend Offline'}
+            {backendStatus === 'unknown' && '🔍 Testing...'}
           </Text>
-        </TouchableOpacity>
+        </View>
+        
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={[styles.button, testing && styles.buttonDisabled]} 
+            onPress={testBackend}
+            disabled={testing}
+          >
+            <Text style={styles.buttonText}>
+              {testing ? 'Testing...' : 'Test Again'}
+            </Text>
+          </TouchableOpacity>
+          
+          {backendStatus === 'offline' && (
+            <TouchableOpacity 
+              style={[styles.button, styles.helpButton]} 
+              onPress={showDeploymentHelp}
+            >
+              <Text style={styles.buttonText}>Get Help</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <ScrollView style={styles.results}>
         {results.map((result, index) => (
-          <Text key={index} style={styles.resultText}>
-            {result}
-          </Text>
+          <View key={index} style={[
+            styles.resultItem,
+            result.type === 'success' && styles.resultSuccess,
+            result.type === 'error' && styles.resultError,
+            result.type === 'warning' && styles.resultWarning
+          ]}>
+            <Text style={styles.resultTime}>{result.timestamp}</Text>
+            <Text style={styles.resultText}>{result.message}</Text>
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -143,11 +166,44 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     color: '#333',
   },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  statusIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  statusOnline: {
+    backgroundColor: '#4CAF50',
+  },
+  statusOffline: {
+    backgroundColor: '#F44336',
+  },
+  statusUnknown: {
+    backgroundColor: '#FF9800',
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   button: {
     backgroundColor: '#007AFF',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+    flex: 1,
+  },
+  helpButton: {
+    backgroundColor: '#FF9800',
   },
   buttonDisabled: {
     backgroundColor: '#ccc',
@@ -161,13 +217,31 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  resultItem: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#e0e0e0',
+  },
+  resultSuccess: {
+    borderLeftColor: '#4CAF50',
+  },
+  resultError: {
+    borderLeftColor: '#F44336',
+  },
+  resultWarning: {
+    borderLeftColor: '#FF9800',
+  },
+  resultTime: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
   resultText: {
     fontSize: 14,
-    marginBottom: 8,
     fontFamily: 'monospace',
     color: '#333',
-    backgroundColor: '#fff',
-    padding: 8,
-    borderRadius: 4,
   },
 });

@@ -54,7 +54,9 @@ const testBackendConnectivityInternal = async (): Promise<boolean> => {
       if (isConnected) {
         console.log('✅ Backend connectivity test: SUCCESS');
       } else {
-        console.log('❌ Backend connectivity test: FAILED - Using fallback mode');
+        console.log('❌ Backend connectivity test: FAILED');
+        console.log('🔄 App will use fallback/mock mode for offline functionality');
+        console.log('📋 To fix: Ensure backend is deployed to Rork platform');
       }
     }
     
@@ -62,6 +64,7 @@ const testBackendConnectivityInternal = async (): Promise<boolean> => {
   } catch (error) {
     if (__DEV__) {
       console.error('❌ Backend connectivity test failed:', error);
+      console.log('🔄 Falling back to offline mode');
     }
     return false;
   }
@@ -225,20 +228,26 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
             continue;
           }
           
-          console.error('🚨 CRITICAL: Backend deployment is not accessible!');
-          console.error('🚨 URL attempted:', url);
-          console.error('🚨 This indicates the backend is not deployed to Rork platform');
+          if (__DEV__) {
+            console.error('🚨 CRITICAL: Backend deployment is not accessible!');
+            console.error('🚨 URL attempted:', url);
+            console.error('🚨 This indicates the backend is not deployed to Rork platform');
+            console.error('📋 Possible solutions:');
+            console.error('   • Check if backend is deployed to Rork');
+            console.error('   • Verify environment variables are set');
+            console.error('   • Check network connectivity');
+          }
           
           // Try to provide more helpful error information
           const isLocalhost = url.includes('localhost');
           const isRorkDomain = url.includes('.rork.app');
           
           if (isLocalhost) {
-            throw new Error('Backend is trying to connect to localhost but should use deployed URL. Check EXPO_PUBLIC_API_URL environment variable.');
+            throw new Error('Backend trying to connect to localhost. Check EXPO_PUBLIC_API_URL environment variable.');
           } else if (isRorkDomain) {
-            throw new Error('Backend deployment not found on Rork platform. The app may not be properly deployed or the backend may be down.');
+            throw new Error('Backend not accessible on Rork platform. Deployment may have failed or backend is down.');
           } else {
-            throw new Error('Backend deployment not accessible. Check the API URL configuration.');
+            throw new Error('Backend not accessible. Check API URL configuration.');
           }
         }
       }
@@ -313,8 +322,13 @@ const createSmartTRPCClient = async (): Promise<any> => {
   return createRealTRPCClient();
 };
 
-// Create the tRPC client
-export const trpcClient = createRealTRPCClient(); // Start with real client, fallback handled in fetch logic
+// Create the tRPC client with better error handling
+export const trpcClient = createRealTRPCClient();
+
+// Add a helper to check if we should use fallback mode
+export const shouldUseFallback = () => {
+  return isBackendOnline === false;
+};
 
 // Export function to check if backend is available
 export const isBackendAvailable = () => isBackendOnline ?? false;
@@ -331,13 +345,19 @@ export const checkBackendStatus = async (): Promise<boolean> => {
     const isHealthy = await testBackendConnectivity(baseUrl);
     isBackendOnline = isHealthy;
     if (__DEV__) {
-      console.log(isHealthy ? '✅ Backend is online' : '❌ Backend is offline');
+      if (isHealthy) {
+        console.log('✅ Backend is online and accessible');
+      } else {
+        console.log('❌ Backend is offline or not deployed');
+        console.log('🔄 Using fallback mode - some features may be limited');
+      }
     }
     return isHealthy;
   } catch (error) {
     isBackendOnline = false;
     if (__DEV__) {
       console.log('❌ Backend connectivity test failed:', error);
+      console.log('🔄 Switching to offline mode');
     }
     return false;
   }

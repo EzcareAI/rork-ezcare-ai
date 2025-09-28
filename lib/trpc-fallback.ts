@@ -100,19 +100,41 @@ export const createMockTRPCClient = () => {
   return mockClient as any;
 };
 
-// Test if backend is available
+// Test if backend is available with improved error handling
 export const testBackendConnectivity = async (baseUrl: string): Promise<boolean> => {
   try {
-    const response = await fetch(`${baseUrl}/hello`, {
+    console.log('🔍 Testing backend connectivity to:', baseUrl);
+    
+    // First try the health endpoint
+    const healthResponse = await fetch(`${baseUrl}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(3000)
+      signal: AbortSignal.timeout(5000)
     });
-    return response.ok;
-  } catch {
+    
+    if (healthResponse.ok) {
+      console.log('✅ Backend health check passed');
+      return true;
+    }
+    
+    // If health check fails, try hello endpoint
+    const helloResponse = await fetch(`${baseUrl}/hello`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    const isConnected = helloResponse.ok;
+    console.log(isConnected ? '✅ Backend hello endpoint accessible' : '❌ Backend hello endpoint failed');
+    return isConnected;
+  } catch (error) {
+    console.log('❌ Backend connectivity test failed:', error instanceof Error ? error.message : 'Unknown error');
     return false;
   }
 };
