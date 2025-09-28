@@ -2,6 +2,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import { createTRPCClient, httpLink } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
+import { createMockTRPCClient, testBackendConnectivity } from "@/lib/trpc-fallback";
 
 
 export const trpc = createTRPCReact<AppRouter>();
@@ -38,35 +39,44 @@ const testBackendUrl = async (url: string): Promise<boolean> => {
   }
 };
 
-// Test backend connectivity
-const testBackendConnectivity = async (): Promise<void> => {
+// Test backend connectivity with improved error handling
+const testBackendConnectivityInternal = async (): Promise<boolean> => {
   const baseUrl = getBaseUrl();
   
   if (__DEV__) {
     console.log('🔍 Testing backend connectivity to:', baseUrl);
+  }
+  
+  try {
+    const isConnected = await testBackendConnectivity(baseUrl);
     
-    try {
-      const response = await fetch(baseUrl, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(5000)
-      });
-      
-      console.log('✅ Backend connectivity test:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        const text = await response.text();
-        console.log('📄 Backend response:', text.substring(0, 200));
+    if (__DEV__) {
+      if (isConnected) {
+        console.log('✅ Backend connectivity test: SUCCESS');
+      } else {
+        console.log('❌ Backend connectivity test: FAILED - Using fallback mode');
       }
-    } catch (error) {
+    }
+    
+    return isConnected;
+  } catch (error) {
+    if (__DEV__) {
       console.error('❌ Backend connectivity test failed:', error);
     }
+    return false;
   }
 };
 
+// Backend status tracking
+let isBackendOnline: boolean | null = null;
+let backendTestPromise: Promise<boolean> | null = null;
+
 // Run connectivity test on module load
 if (__DEV__) {
-  testBackendConnectivity();
+  backendTestPromise = testBackendConnectivityInternal().then(result => {
+    isBackendOnline = result;
+    return result;
+  });
 }
 
 
@@ -284,11 +294,27 @@ const createRealTRPCClient = () => createTRPCClient<AppRouter>({
   ],
 });
 
-// Backend status tracking
-let isBackendOnline: boolean | null = null; // null = not tested yet
+// Create the tRPC client with intelligent fallback
+const createSmartTRPCClient = async (): Promise<any> => {
+  // Wait for initial connectivity test if it's running
+  if (backendTestPromise) {
+    await backendTestPromise;
+  }
+  
+  // If backend is confirmed offline, use mock client immediately
+  if (isBackendOnline === false) {
+    if (__DEV__) {
+      console.log('🔄 Using mock tRPC client - backend unavailable');
+    }
+    return createMockTRPCClient();
+  }
+  
+  // Otherwise, try real client with fallback on failure
+  return createRealTRPCClient();
+};
 
-// Create the tRPC client with fallback logic
-export const trpcClient = createRealTRPCClient(); // Always use real client, let retry logic handle failures
+// Create the tRPC client
+export const trpcClient = createRealTRPCClient(); // Start with real client, fallback handled in fetch logic
 
 // Export function to check if backend is available
 export const isBackendAvailable = () => isBackendOnline ?? false;
@@ -302,7 +328,7 @@ export const resetTRPCClient = () => {
 export const checkBackendStatus = async (): Promise<boolean> => {
   const baseUrl = getBaseUrl();
   try {
-    const isHealthy = await testBackendHealth(baseUrl);
+    const isHealthy = await testBackendConnectivity(baseUrl);
     isBackendOnline = isHealthy;
     if (__DEV__) {
       console.log(isHealthy ? '✅ Backend is online' : '❌ Backend is offline');
@@ -315,4 +341,18 @@ export const checkBackendStatus = async (): Promise<boolean> => {
     }
     return false;
   }
+};
+
+// Create fallback client for when backend is unavailable
+export const createFallbackClient = () => {
+  if (__DEV__) {
+    console.log('🔄 Creating fallback tRPC client');
+  }
+  return createMockTRPCClient();
+};
+
+// Smart client that switches between real and mock based on connectivity
+export const createSmartClient = async () => {
+  const isOnline = await checkBackendStatus();
+  return isOnline ? trpcClient : createFallbackClient();
 };
