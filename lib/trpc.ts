@@ -7,37 +7,18 @@ import superjson from "superjson";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  let baseUrl = '';
+  // Always use the deployed backend URL
+  const deployedUrl = "https://zvfley8yoowhncate9z5.rork.app/api";
   
-  // TEMPORARY FIX: Use mock backend until deployment is fixed
-  console.warn('⚠️ BACKEND DEPLOYMENT ISSUE: Using fallback configuration');
-  console.warn('⚠️ The backend at https://zvfley8yoowhncate9z5.rork.app/api is not accessible');
-  console.warn('⚠️ This will cause tRPC to use fallback/mock responses');
+  // Check if we have a custom API URL from environment
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
   
-  // For development, try localhost first
-  if (__DEV__) {
-    const possibleUrls = [
-      "http://localhost:3000/api", // Local development
-      process.env.EXPO_PUBLIC_API_URL,
-      "https://zvfley8yoowhncate9z5.rork.app/api",
-    ].filter(Boolean);
-    baseUrl = possibleUrls[0] || "http://localhost:3000/api";
-  } else {
-    // For production, use the deployed URL
-    const possibleUrls = [
-      process.env.EXPO_PUBLIC_API_URL,
-      "https://zvfley8yoowhncate9z5.rork.app/api",
-    ].filter(Boolean);
-    baseUrl = possibleUrls[0] || "https://zvfley8yoowhncate9z5.rork.app/api";
-  }
-  
-  // Ensure baseUrl doesn't end with a slash to avoid double slashes
-  baseUrl = baseUrl.replace(/\/$/, '');
+  const baseUrl = envUrl || deployedUrl;
   
   if (__DEV__) {
     console.log('🔍 tRPC getBaseUrl computed:', baseUrl);
-    console.log('🔍 EXPO_PUBLIC_API_URL env var:', process.env.EXPO_PUBLIC_API_URL || 'NOT SET');
-    console.log('🔍 Environment mode:', __DEV__ ? 'development' : 'production');
+    console.log('🔍 EXPO_PUBLIC_API_URL env var:', envUrl || 'NOT SET');
+    console.log('🔍 Using deployed backend URL');
   }
   
   return baseUrl;
@@ -247,29 +228,8 @@ const createRealTRPCClient = () => createTRPCClient<AppRouter>({
   ],
 });
 
-// Create a smart tRPC client that falls back to mock when backend is unavailable
-let cachedClient: any = null;
+// Backend status tracking
 let isBackendOnline: boolean | null = null; // null = not tested yet
-
-const createSmartTRPCClient = async () => {
-  if (cachedClient) return cachedClient;
-  
-  // Test backend connectivity first
-  const baseUrl = getBaseUrl();
-  const isHealthy = await testBackendHealth(baseUrl);
-  isBackendOnline = isHealthy;
-  
-  if (isHealthy) {
-    console.log('✅ Backend is online, using real tRPC client');
-    cachedClient = createRealTRPCClient();
-  } else {
-    console.log('❌ Backend is offline, using mock tRPC client');
-    const { createMockTRPCClient } = await import('@/lib/trpc-fallback');
-    cachedClient = createMockTRPCClient();
-  }
-  
-  return cachedClient;
-};
 
 // Create the tRPC client with fallback logic
 export const trpcClient = createRealTRPCClient(); // Always use real client, let retry logic handle failures
@@ -279,7 +239,6 @@ export const isBackendAvailable = () => isBackendOnline ?? false;
 
 // Function to reset client cache (useful for retrying connection)
 export const resetTRPCClient = () => {
-  cachedClient = null;
   isBackendOnline = null;
 };
 
