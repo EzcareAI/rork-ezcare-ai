@@ -54,7 +54,7 @@ const testBackendHealth = async (baseUrl: string): Promise<boolean> => {
 };
 
 // Custom fetch with retry logic and backend testing
-const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 1): Promise<Response> => {
+const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxRetries = 2): Promise<Response> => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   
   // Validate URL input
@@ -173,7 +173,18 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
           console.error('🚨 CRITICAL: Backend deployment is not accessible!');
         console.error('🚨 URL attempted:', url);
         console.error('🚨 This indicates the backend is not deployed to Rork platform');
-        throw new Error('Backend deployment not found. The app needs to be deployed to Rork platform first.');
+        
+        // Try to provide more helpful error information
+        const isLocalhost = url.includes('localhost');
+        const isRorkDomain = url.includes('.rork.app');
+        
+        if (isLocalhost) {
+          throw new Error('Backend is trying to connect to localhost but should use deployed URL. Check EXPO_PUBLIC_API_URL environment variable.');
+        } else if (isRorkDomain) {
+          throw new Error('Backend deployment not found on Rork platform. The app may not be properly deployed or the backend may be down.');
+        } else {
+          throw new Error('Backend deployment not accessible. Check the API URL configuration.');
+        }
         }
       }
       
