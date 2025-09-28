@@ -24,6 +24,37 @@ const getBaseUrl = () => {
   return baseUrl;
 };
 
+// Test backend connectivity
+const testBackendConnectivity = async (): Promise<void> => {
+  const baseUrl = getBaseUrl();
+  
+  if (__DEV__) {
+    console.log('🔍 Testing backend connectivity to:', baseUrl);
+    
+    try {
+      const response = await fetch(baseUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      console.log('✅ Backend connectivity test:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const text = await response.text();
+        console.log('📄 Backend response:', text.substring(0, 200));
+      }
+    } catch (error) {
+      console.error('❌ Backend connectivity test failed:', error);
+    }
+  }
+};
+
+// Run connectivity test on module load
+if (__DEV__) {
+  testBackendConnectivity();
+}
+
 
 
 // Test if backend is available
@@ -171,20 +202,20 @@ const fetchWithRetry = async (input: URL | RequestInfo, init?: RequestInit, maxR
           }
           
           console.error('🚨 CRITICAL: Backend deployment is not accessible!');
-        console.error('🚨 URL attempted:', url);
-        console.error('🚨 This indicates the backend is not deployed to Rork platform');
-        
-        // Try to provide more helpful error information
-        const isLocalhost = url.includes('localhost');
-        const isRorkDomain = url.includes('.rork.app');
-        
-        if (isLocalhost) {
-          throw new Error('Backend is trying to connect to localhost but should use deployed URL. Check EXPO_PUBLIC_API_URL environment variable.');
-        } else if (isRorkDomain) {
-          throw new Error('Backend deployment not found on Rork platform. The app may not be properly deployed or the backend may be down.');
-        } else {
-          throw new Error('Backend deployment not accessible. Check the API URL configuration.');
-        }
+          console.error('🚨 URL attempted:', url);
+          console.error('🚨 This indicates the backend is not deployed to Rork platform');
+          
+          // Try to provide more helpful error information
+          const isLocalhost = url.includes('localhost');
+          const isRorkDomain = url.includes('.rork.app');
+          
+          if (isLocalhost) {
+            throw new Error('Backend is trying to connect to localhost but should use deployed URL. Check EXPO_PUBLIC_API_URL environment variable.');
+          } else if (isRorkDomain) {
+            throw new Error('Backend deployment not found on Rork platform. The app may not be properly deployed or the backend may be down.');
+          } else {
+            throw new Error('Backend deployment not accessible. Check the API URL configuration.');
+          }
         }
       }
       

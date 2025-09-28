@@ -28,13 +28,21 @@ export async function GET(request: Request): Promise<Response> {
     console.log('✅ API GET response status:', response.status);
     console.log('✅ API GET response headers:', Object.fromEntries(response.headers.entries()));
     
-    return response;
+    // Clone the response to ensure it's properly returned
+    const clonedResponse = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    });
+    
+    return clonedResponse;
   } catch (error) {
     console.error('❌ API GET error:', error);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      stack: error instanceof Error ? error.stack : undefined
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
