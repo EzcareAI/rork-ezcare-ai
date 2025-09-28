@@ -293,6 +293,9 @@ export default function LandingPage() {
             <TouchableOpacity onPress={() => router.push('/backend-status')}>
               <Text style={styles.footerLink}>Backend Status</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/backend-connectivity-test')}>
+              <Text style={styles.footerLink}>Connectivity Test</Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.footerText}>
             © 2024 EZCare AI. Educational content only — not medical advice.

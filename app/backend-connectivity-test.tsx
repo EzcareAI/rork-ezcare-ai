@@ -27,20 +27,32 @@ export default function BackendConnectivityTest() {
     // Test 1: Direct fetch to backend root
     try {
       addTestResult('Direct Backend Root', 'pending', 'Testing...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/api', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
-        const data = await response.json();
-        addTestResult('Direct Backend Root', 'success', `Status: ${response.status}, Message: ${data.message || 'OK'}`);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          addTestResult('Direct Backend Root', 'success', `Status: ${response.status}, Message: ${data.message || 'OK'}`);
+        } else {
+          const text = await response.text();
+          addTestResult('Direct Backend Root', 'error', `Expected JSON but got: ${contentType}. Response: ${text.substring(0, 100)}...`);
+        }
       } else {
         const errorText = await response.text();
-        addTestResult('Direct Backend Root', 'error', `Status: ${response.status}, Error: ${errorText}`);
+        addTestResult('Direct Backend Root', 'error', `Status: ${response.status}, Error: ${errorText.substring(0, 200)}`);
       }
     } catch (error) {
       addTestResult('Direct Backend Root', 'error', `Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -49,26 +61,88 @@ export default function BackendConnectivityTest() {
     // Test 2: Direct fetch to backend hello endpoint
     try {
       addTestResult('Backend Hello Endpoint', 'pending', 'Testing...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/api/hello', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
         addTestResult('Backend Hello Endpoint', 'success', `Status: ${response.status}, Message: ${data.message || 'OK'}`);
       } else {
         const errorText = await response.text();
-        addTestResult('Backend Hello Endpoint', 'error', `Status: ${response.status}, Error: ${errorText}`);
+        addTestResult('Backend Hello Endpoint', 'error', `Status: ${response.status}, Error: ${errorText.substring(0, 200)}`);
       }
     } catch (error) {
       addTestResult('Backend Hello Endpoint', 'error', `Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
-    // Test 3: tRPC client test
+    // Test 3: Test debug API route
+    try {
+      addTestResult('Debug API Route', 'pending', 'Testing...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/api/debug', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        addTestResult('Debug API Route', 'success', `Status: ${response.status}, Success: ${data.success}`);
+      } else {
+        const errorText = await response.text();
+        addTestResult('Debug API Route', 'error', `Status: ${response.status}, Error: ${errorText.substring(0, 200)}`);
+      }
+    } catch (error) {
+      addTestResult('Debug API Route', 'error', `Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // Test 4: Test tRPC debug ping
+    try {
+      addTestResult('tRPC Debug Ping', 'pending', 'Testing...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/api/trpc/debug.ping', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        addTestResult('tRPC Debug Ping', 'success', `Status: ${response.status}, Response: ${JSON.stringify(data)}`);
+      } else {
+        const errorText = await response.text();
+        addTestResult('tRPC Debug Ping', 'error', `Status: ${response.status}, Error: ${errorText.substring(0, 200)}`);
+      }
+    } catch (error) {
+      addTestResult('tRPC Debug Ping', 'error', `Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // Test 5: tRPC client test
     try {
       addTestResult('tRPC Client Test', 'pending', 'Testing...');
       const result = await trpcClient.example.hi.query();
@@ -77,8 +151,35 @@ export default function BackendConnectivityTest() {
       addTestResult('tRPC Client Test', 'error', `tRPC Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
-    // Test 4: Environment variables check
+    // Test 6: Environment variables check
     addTestResult('Environment Check', 'success', `API URL: ${process.env.EXPO_PUBLIC_API_URL || 'NOT SET'}`);
+    
+    // Test 7: Check if deployment exists
+    try {
+      addTestResult('Deployment Check', 'pending', 'Testing...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch('https://zvfley8yoowhncate9z5.rork.app/', {
+        method: 'GET',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const text = await response.text();
+        if (text.includes('Snapshot not found')) {
+          addTestResult('Deployment Check', 'error', 'Deployment shows "Snapshot not found" - app may not be properly deployed');
+        } else {
+          addTestResult('Deployment Check', 'success', `Deployment exists, Status: ${response.status}`);
+        }
+      } else {
+        addTestResult('Deployment Check', 'error', `Status: ${response.status}, ${response.statusText}`);
+      }
+    } catch (error) {
+      addTestResult('Deployment Check', 'error', `Network Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }, []);
 
   useEffect(() => {
