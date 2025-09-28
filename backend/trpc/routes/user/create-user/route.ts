@@ -9,6 +9,10 @@ export const getUserProcedure = publicProcedure
     const { userId } = input;
 
     try {
+      if (!ctx.supabase) {
+        throw new Error('Database connection not available. Check backend environment variables.');
+      }
+      
       const { data, error } = await ctx.supabase
         .from('users')
         .select('*')
@@ -44,6 +48,10 @@ export const createUserProcedure = publicProcedure
     const { userId, email, name } = input;
 
     try {
+      if (!ctx.supabase) {
+        throw new Error('Database connection not available. Check backend environment variables.');
+      }
+      
       // First check if user already exists (due to trigger)
       const { data: existingUser } = await ctx.supabase
         .from('users')
@@ -54,7 +62,7 @@ export const createUserProcedure = publicProcedure
       if (existingUser) {
         // Update name if provided
         if (name && !existingUser.name) {
-          const { data: updatedUser } = await ctx.supabase
+          const { data: updatedUser } = await ctx.supabase!
             .from('users')
             .update({ name })
             .eq('id', userId)
@@ -67,7 +75,7 @@ export const createUserProcedure = publicProcedure
       }
 
       // If user doesn't exist, create it
-      const { data, error } = await ctx.supabase
+      const { data, error } = await ctx.supabase!
         .from('users')
         .upsert({
           id: userId,
@@ -84,7 +92,7 @@ export const createUserProcedure = publicProcedure
       if (error) {
         // If it's a duplicate key error, try to fetch the existing user
         if (error.code === '23505') {
-          const { data: fetchedUser } = await ctx.supabase
+          const { data: fetchedUser } = await ctx.supabase!
             .from('users')
             .select('*')
             .eq('id', userId)
@@ -113,6 +121,10 @@ export const updateUserSubscriptionProcedure = publicProcedure
     const { userId, subscriptionPlan, credits } = input;
 
     try {
+      if (!ctx.supabase) {
+        throw new Error('Database connection not available. Check backend environment variables.');
+      }
+      
       const updateData: any = {
         subscription_plan: subscriptionPlan,
         credits_reset_date: new Date().toISOString(),

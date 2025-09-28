@@ -9,6 +9,11 @@ export const getQuizHistoryProcedure = publicProcedure
     if (!input.userId) {
       return [];
     }
+    
+    if (!ctx.supabase) {
+      console.error('Database connection not available for quiz history');
+      return [];
+    }
 
     const { data, error } = await ctx.supabase
       .from('quiz_responses')

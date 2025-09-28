@@ -34,6 +34,15 @@ export const supabaseAdmin = supabaseUrl && supabaseServiceKey
 
 // Context creation function
 export const createContext = async (opts: FetchCreateContextFnOptions) => {
+  console.log('🔍 Creating tRPC context');
+  console.log('🔍 Supabase admin client available:', !!supabaseAdmin);
+  
+  if (!supabaseAdmin) {
+    console.error('❌ Supabase admin client is null - check environment variables');
+    console.error('❌ EXPO_PUBLIC_SUPABASE_URL:', !!process.env.EXPO_PUBLIC_SUPABASE_URL);
+    console.error('❌ SUPABASE_SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+  }
+  
   return {
     req: opts.req,
     supabase: supabaseAdmin,
