@@ -7,18 +7,18 @@ import superjson from "superjson";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  // Always use the deployed backend URL
-  const deployedUrl = "https://zvfley8yoowhncate9z5.rork.app/api";
-  
-  // Check if we have a custom API URL from environment
+  // Check if we have a custom API URL from environment first
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  
+  // Fallback to deployed backend URL
+  const deployedUrl = "https://zvfley8yoowhncate9z5.rork.app/api";
   
   const baseUrl = envUrl || deployedUrl;
   
   if (__DEV__) {
     console.log('🔍 tRPC getBaseUrl computed:', baseUrl);
     console.log('🔍 EXPO_PUBLIC_API_URL env var:', envUrl || 'NOT SET');
-    console.log('🔍 Using deployed backend URL');
+    console.log('🔍 Using backend URL:', baseUrl);
   }
   
   return baseUrl;

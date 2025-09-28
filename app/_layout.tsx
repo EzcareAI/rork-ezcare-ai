@@ -63,6 +63,8 @@ function RootLayoutNav() {
       <Stack.Screen name="backend-status" />
       <Stack.Screen name="backend-connectivity-test" />
       <Stack.Screen name="env-test" />
+      <Stack.Screen name="backend-connectivity-simple" />
+      <Stack.Screen name="backend-connectivity-fix" />
     </Stack>
   );
 }
