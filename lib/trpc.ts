@@ -8,18 +8,22 @@ import { createMockTRPCClient, testBackendConnectivity } from "@/lib/trpc-fallba
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  // Check if we have a custom API URL from environment first
+  // Always use the Rork platform URL for deployment
+  const rorkUrl = "https://zvfley8yoowhncate9z5.rork.app/api";
+  
+  // Check if we have a custom API URL from environment (for development)
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   
-  // Fallback to deployed backend URL
-  const deployedUrl = "https://zvfley8yoowhncate9z5.rork.app/api";
-  
-  const baseUrl = envUrl || deployedUrl;
+  // Use environment URL only if it's not pointing to Vercel
+  const baseUrl = (envUrl && !envUrl.includes('vercel.app')) ? envUrl : rorkUrl;
   
   if (__DEV__) {
     console.log('🔍 tRPC getBaseUrl computed:', baseUrl);
     console.log('🔍 EXPO_PUBLIC_API_URL env var:', envUrl || 'NOT SET');
-    console.log('🔍 Using backend URL:', baseUrl);
+    console.log('🔍 Using Rork backend URL:', baseUrl);
+    if (envUrl && envUrl.includes('vercel.app')) {
+      console.log('⚠️ Ignoring Vercel URL, using Rork platform instead');
+    }
   }
   
   return baseUrl;
