@@ -24,3 +24,6 @@ if (typeof app.fetch === 'function') {
 } else {
   console.error('❌ App fetch handler is missing!');
 }
+
+// Export fetch function for Rork deployment
+export const fetch = app.fetch.bind(app);
