@@ -422,4 +422,14 @@ app.all('*', (c) => {
   }, 404);
 });
 
+// Export for both CommonJS and ES modules compatibility
 export default app;
+
+// Also export as named export for compatibility
+export { app };
+
+// For Rork deployment compatibility
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = app;
+  module.exports.default = app;
+}

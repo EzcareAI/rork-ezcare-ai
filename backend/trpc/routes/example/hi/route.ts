@@ -1,5 +1,8 @@
 import { publicProcedure } from '@/backend/trpc/create-context';
 
-export default publicProcedure.query(() => {
+export const hiProcedure = publicProcedure.query(() => {
   return { message: 'Hello from tRPC!' };
 });
+
+// Also export as default for backward compatibility
+export default hiProcedure;

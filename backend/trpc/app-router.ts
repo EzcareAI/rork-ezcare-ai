@@ -1,5 +1,5 @@
 import { createTRPCRouter, publicProcedure } from "./create-context";
-import hiRoute from "./routes/example/hi/route";
+import { hiProcedure } from "./routes/example/hi/route";
 import { saveQuizResponseProcedure } from "./routes/quiz/save-response/route";
 import { getQuizHistoryProcedure } from "./routes/quiz/get-history/route";
 import { saveChatProcedure } from "./routes/chat/save-chat/route";
@@ -15,7 +15,7 @@ export const appRouter = createTRPCRouter({
     ping: publicProcedure.query(() => ({ message: 'pong', timestamp: new Date().toISOString() })),
   }),
   example: createTRPCRouter({
-    hi: hiRoute,
+    hi: hiProcedure,
   }),
   quiz: createTRPCRouter({
     saveResponse: saveQuizResponseProcedure,
