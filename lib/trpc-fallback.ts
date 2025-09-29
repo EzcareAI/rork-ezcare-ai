@@ -106,14 +106,19 @@ export const testBackendConnectivity = async (baseUrl: string): Promise<boolean>
     console.log('🔍 Testing backend connectivity to:', baseUrl);
     
     // First try the health endpoint
+    const healthController = new AbortController();
+    const healthTimeoutId = setTimeout(() => healthController.abort(), 5000);
+    
     const healthResponse = await fetch(`${baseUrl}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(5000)
+      signal: healthController.signal
     });
+    
+    clearTimeout(healthTimeoutId);
     
     if (healthResponse.ok) {
       console.log('✅ Backend health check passed');
@@ -121,14 +126,19 @@ export const testBackendConnectivity = async (baseUrl: string): Promise<boolean>
     }
     
     // If health check fails, try hello endpoint
+    const helloController = new AbortController();
+    const helloTimeoutId = setTimeout(() => helloController.abort(), 5000);
+    
     const helloResponse = await fetch(`${baseUrl}/hello`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(5000)
+      signal: helloController.signal
     });
+    
+    clearTimeout(helloTimeoutId);
     
     const isConnected = helloResponse.ok;
     console.log(isConnected ? '✅ Backend hello endpoint accessible' : '❌ Backend hello endpoint failed');
