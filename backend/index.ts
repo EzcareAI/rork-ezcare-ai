@@ -12,6 +12,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // For Rork deployment - ensure the app is properly exported
 console.log('🚀 Backend index.ts loaded, app exported:', typeof app);
+console.log('🔄 Redeployment triggered:', new Date().toISOString());
 
 // Handle Rork deployment entry point
 if (typeof globalThis !== 'undefined') {
