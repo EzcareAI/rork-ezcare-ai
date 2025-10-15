@@ -12,7 +12,7 @@ EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 EXPO_PUBLIC_API_URL=your_api_base_url
 
-# Backend (Hono)
+# Backend (Supabase Edge Functions)
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
@@ -35,12 +35,13 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 9. **Go to "Table Editor"** to verify these tables were created:
    - ✅ `users` table (extends auth.users)
    - ✅ `quiz_responses` table
-   - ✅ `chats` table  
+   - ✅ `chats` table
    - ✅ `subscriptions` table
    - ✅ Row Level Security policies
    - ✅ Automatic user profile creation trigger
 
 ### Troubleshooting:
+
 - If you see the tables in "Schema Visualizer" but NOT in "Table Editor", the schema wasn't executed properly
 - Make sure you run the ENTIRE schema file, not just parts of it
 - The trigger should automatically create user profiles when someone signs up
@@ -49,6 +50,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ## Features Implemented
 
 ### Authentication
+
 - ✅ Supabase Auth integration
 - ✅ Sign up with email/password
 - ✅ Sign in with email/password
@@ -57,6 +59,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 - ✅ Logout functionality
 
 ### Database
+
 - ✅ User profiles with credits and subscription plans
 - ✅ Quiz responses storage
 - ✅ Chat history storage
@@ -64,8 +67,9 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 - ✅ Automatic timestamps and triggers
 
 ### API Routes
-- ✅ `/api/create-user` - Creates user profile after signup
-- ✅ Backend tRPC integration with Supabase
+
+- ✅ Supabase Edge Functions for Stripe payments
+- ✅ Direct Supabase client integration
 - ✅ Service role key for protected operations
 
 ## Usage
@@ -73,15 +77,15 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 The auth context now uses real Supabase authentication:
 
 ```typescript
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from "@/contexts/auth-context";
 
 const { user, session, login, signup, logout } = useAuth();
 
 // Sign up
-await signup('user@example.com', 'password123');
+await signup("user@example.com", "password123");
 
-// Sign in  
-await login('user@example.com', 'password123');
+// Sign in
+await login("user@example.com", "password123");
 
 // Access user data
 console.log(user?.email, user?.credits, user?.subscription_plan);
@@ -90,21 +94,25 @@ console.log(user?.email, user?.credits, user?.subscription_plan);
 ## Database Tables
 
 ### users
+
 - Extends Supabase auth.users
 - Stores credits, subscription_plan, referral_code
 - Automatically created when user signs up
 
 ### quiz_responses
+
 - Stores health quiz responses
 - Links to user via user_id
 - Includes BMI calculation and health score
 
 ### chats
+
 - Stores AI chat conversations
 - Links to user via user_id
 - Message and response pairs
 
 ### subscriptions
+
 - Stripe subscription management
 - Links to user via user_id
 - Tracks subscription status and periods

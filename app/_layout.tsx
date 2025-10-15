@@ -1,17 +1,16 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, Component, ReactNode } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet, View, Text } from "react-native";
 import { AuthProvider } from "@/contexts/auth-context";
-import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
-
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false };
@@ -22,7 +21,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error boundary caught an error:', error, errorInfo);
+    console.error("Error boundary caught an error:", error, errorInfo);
     // In production, you might want to log this to a service like Sentry
   }
 
@@ -30,7 +29,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
     if (this.state.hasError) {
       return (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Something went wrong. Please restart the app.</Text>
+          <Text style={styles.errorText}>
+            Something went wrong. Please restart the app.
+          </Text>
         </View>
       );
     }
@@ -57,14 +58,6 @@ function RootLayoutNav() {
       <Stack.Screen name="quiz" />
       <Stack.Screen name="quiz-result" />
       <Stack.Screen name="chat" />
-      <Stack.Screen name="backend-test" />
-      <Stack.Screen name="simple-test" />
-      <Stack.Screen name="deployment-test" />
-      <Stack.Screen name="backend-status" />
-      <Stack.Screen name="backend-connectivity-test" />
-      <Stack.Screen name="env-test" />
-      <Stack.Screen name="backend-connectivity-simple" />
-      <Stack.Screen name="backend-connectivity-fix" />
     </Stack>
   );
 }
@@ -76,15 +69,11 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <GestureHandlerRootView style={styles.container}>
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </AuthProvider>
-        </QueryClientProvider>
-      </trpc.Provider>
+      <AuthProvider>
+        <GestureHandlerRootView style={styles.container}>
+          <RootLayoutNav />
+        </GestureHandlerRootView>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
@@ -95,13 +84,13 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   errorText: {
     fontSize: 16,
-    textAlign: 'center',
-    color: '#666',
+    textAlign: "center",
+    color: "#666",
   },
 });

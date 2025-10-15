@@ -1,68 +1,97 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { ArrowLeft, CreditCard, Calendar, Zap, ExternalLink } from 'lucide-react-native';
-import { useAuth } from '@/contexts/auth-context';
-import { trpc } from '@/lib/trpc';
-import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import {
+  ArrowLeft,
+  CreditCard,
+  Calendar,
+  Zap,
+  ExternalLink,
+} from "lucide-react-native";
+import { useAuth } from "@/contexts/auth-context";
+import { supabase } from "@/lib/supabase";
+import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 
 export default function BillingPage() {
   const { user } = useAuth();
-  const cancelSubscriptionMutation = trpc.stripe.cancelSubscription.useMutation();
 
   const handleManageBilling = () => {
-    if (user?.subscription_plan === 'trial') {
+    if (user?.subscription_plan === "trial") {
       Alert.alert(
-        'No Active Subscription',
-        'You are currently on a trial plan. Upgrade to a paid plan to access billing management.',
-        [{ text: 'OK' }]
+        "No Active Subscription",
+        "You are currently on a trial plan. Upgrade to a paid plan to access billing management.",
+        [{ text: "OK" }]
       );
       return;
     }
 
-    Alert.alert(
-      'Manage Subscription',
-      'What would you like to do?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Cancel Subscription', style: 'destructive', onPress: handleCancelSubscription },
-        { text: 'View Pricing', onPress: () => router.push('/pricing') },
-      ]
-    );
+    Alert.alert("Manage Subscription", "What would you like to do?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Cancel Subscription",
+        style: "destructive",
+        onPress: handleCancelSubscription,
+      },
+      { text: "View Pricing", onPress: () => router.push("/pricing") },
+    ]);
   };
 
   const handleCancelSubscription = async () => {
     if (!user) return;
 
     Alert.alert(
-      'Cancel Subscription',
-      'Are you sure you want to cancel your subscription? You will lose access to premium features and your credits will be reset to the trial amount.',
+      "Cancel Subscription",
+      "Are you sure you want to cancel your subscription? You will lose access to premium features and your credits will be reset to the trial amount.",
       [
-        { text: 'Keep Subscription', style: 'cancel' },
+        { text: "Keep Subscription", style: "cancel" },
         {
-          text: 'Cancel Subscription',
-          style: 'destructive',
+          text: "Cancel Subscription",
+          style: "destructive",
           onPress: async () => {
             try {
-              await cancelSubscriptionMutation.mutateAsync({ userId: user.id });
-              Alert.alert(
-                'Subscription Cancelled',
-                'Your subscription has been cancelled successfully. You have been downgraded to the trial plan.',
-                [{ text: 'OK', onPress: () => router.push('/dashboard') }]
+              // Cancel subscription using Supabase Edge Function
+              const { data: result, error } = await supabase.functions.invoke(
+                "cancel-subscription",
+                {
+                  body: {
+                    userId: user.id,
+                  },
+                }
               );
+
+              if (error) {
+                throw error;
+              }
+
+              if (result?.success) {
+                Alert.alert(
+                  "Subscription Cancelled",
+                  "Your subscription has been cancelled successfully. You have been downgraded to the trial plan.",
+                  [{ text: "OK", onPress: () => router.push("/dashboard") }]
+                );
+              } else {
+                throw new Error("Failed to cancel subscription");
+              }
             } catch (error) {
-              console.error('Error cancelling subscription:', error);
+              console.error("Error cancelling subscription:", error);
               Alert.alert(
-                'Error',
-                'Failed to cancel subscription. Please try again or contact support.',
-                [{ text: 'OK' }]
+                "Error",
+                "Failed to cancel subscription. Please try again or contact support.",
+                [{ text: "OK" }]
               );
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -85,32 +114,40 @@ export default function BillingPage() {
 
         {/* Current Plan */}
         <LinearGradient
-          colors={['#4F46E5', '#06B6D4', '#10B981']}
+          colors={["#4F46E5", "#06B6D4", "#10B981"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.planCard}
         >
           <Text style={styles.planTitle}>Current Plan</Text>
-          <Text style={styles.planName}>{user.subscription_plan.toUpperCase()}</Text>
+          <Text style={styles.planName}>
+            {user.subscription_plan.toUpperCase()}
+          </Text>
           <View style={styles.creditsContainer}>
             <Zap size={20} color="#FEF3C7" />
-            <Text style={styles.creditsText}>{user.credits} credits remaining</Text>
+            <Text style={styles.creditsText}>
+              {user.credits} credits remaining
+            </Text>
           </View>
         </LinearGradient>
 
         {/* Usage Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Usage This Month</Text>
-          
+
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <View style={styles.statIcon}>
                 <Zap size={24} color="#10B981" />
               </View>
               <Text style={styles.statValue}>
-                {user.subscription_plan === 'trial' ? '20' : 
-                 user.subscription_plan === 'starter' ? '200' :
-                 user.subscription_plan === 'pro' ? '1000' : '∞'}
+                {user.subscription_plan === "trial"
+                  ? "20"
+                  : user.subscription_plan === "starter"
+                  ? "200"
+                  : user.subscription_plan === "pro"
+                  ? "1000"
+                  : "∞"}
               </Text>
               <Text style={styles.statLabel}>Total Credits</Text>
             </View>
@@ -120,9 +157,13 @@ export default function BillingPage() {
                 <Calendar size={24} color="#3B82F6" />
               </View>
               <Text style={styles.statValue}>
-                {user.subscription_plan === 'trial' ? (20 - user.credits) :
-                 user.subscription_plan === 'starter' ? (200 - user.credits) :
-                 user.subscription_plan === 'pro' ? (1000 - user.credits) : '0'}
+                {user.subscription_plan === "trial"
+                  ? 20 - user.credits
+                  : user.subscription_plan === "starter"
+                  ? 200 - user.credits
+                  : user.subscription_plan === "pro"
+                  ? 1000 - user.credits
+                  : "0"}
               </Text>
               <Text style={styles.statLabel}>Credits Used</Text>
             </View>
@@ -132,15 +173,17 @@ export default function BillingPage() {
         {/* Billing Management */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Billing Management</Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.billingButton}
             onPress={handleManageBilling}
           >
             <View style={styles.billingButtonContent}>
               <CreditCard size={24} color="#1F2937" />
               <View style={styles.billingButtonText}>
-                <Text style={styles.billingButtonTitle}>Manage Subscription</Text>
+                <Text style={styles.billingButtonTitle}>
+                  Manage Subscription
+                </Text>
                 <Text style={styles.billingButtonSubtitle}>
                   Update payment method, view invoices, cancel subscription
                 </Text>
@@ -151,16 +194,17 @@ export default function BillingPage() {
         </View>
 
         {/* Upgrade Options */}
-        {user.subscription_plan === 'trial' && (
+        {user.subscription_plan === "trial" && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Upgrade Your Plan</Text>
             <Text style={styles.upgradeText}>
-              You&apos;re currently on a trial plan. Upgrade to get more credits and features.
+              You&apos;re currently on a trial plan. Upgrade to get more credits
+              and features.
             </Text>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.upgradeButton}
-              onPress={() => router.push('/pricing')}
+              onPress={() => router.push("/pricing")}
             >
               <Text style={styles.upgradeButtonText}>View Pricing Plans</Text>
             </TouchableOpacity>
@@ -170,7 +214,7 @@ export default function BillingPage() {
         {/* Billing History */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
-          
+
           <View style={styles.activityList}>
             <View style={styles.activityItem}>
               <View style={styles.activityIcon}>
@@ -182,14 +226,16 @@ export default function BillingPage() {
               </View>
             </View>
 
-            {user.subscription_plan !== 'trial' && (
+            {user.subscription_plan !== "trial" && (
               <View style={styles.activityItem}>
                 <View style={styles.activityIcon}>
                   <CreditCard size={16} color="#3B82F6" />
                 </View>
                 <View style={styles.activityContent}>
                   <Text style={styles.activityTitle}>Subscription Started</Text>
-                  <Text style={styles.activityDate}>{user.subscription_plan.toUpperCase()} plan activated</Text>
+                  <Text style={styles.activityDate}>
+                    {user.subscription_plan.toUpperCase()} plan activated
+                  </Text>
                 </View>
               </View>
             )}
@@ -200,12 +246,17 @@ export default function BillingPage() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Need Help?</Text>
           <Text style={styles.supportText}>
-            If you have any questions about billing or need assistance, please contact us:
+            If you have any questions about billing or need assistance, please
+            contact us:
           </Text>
-          
+
           <View style={styles.contactInfo}>
-            <Text style={styles.contactItem}>📧 ezcareai.contact@gmail.com</Text>
-            <Text style={styles.contactItem}>📱 WhatsApp: +33 7 87 19 49 76</Text>
+            <Text style={styles.contactItem}>
+              📧 ezcareai.contact@gmail.com
+            </Text>
+            <Text style={styles.contactItem}>
+              📱 WhatsApp: +33 7 87 19 49 76
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -216,19 +267,19 @@ export default function BillingPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
   },
   planCard: {
     marginHorizontal: 20,
@@ -238,24 +289,24 @@ const styles = StyleSheet.create({
   },
   planTitle: {
     fontSize: 16,
-    color: '#E5E7EB',
+    color: "#E5E7EB",
     marginBottom: 4,
   },
   planName: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 12,
   },
   creditsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   creditsText: {
     fontSize: 16,
-    color: '#FEF3C7',
-    fontWeight: '600',
+    color: "#FEF3C7",
+    fontWeight: "600",
   },
   section: {
     paddingHorizontal: 20,
@@ -263,50 +314,50 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 16,
   },
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     padding: 20,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
   },
   statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   billingButton: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
   },
   billingButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   billingButtonText: {
@@ -314,63 +365,63 @@ const styles = StyleSheet.create({
   },
   billingButtonTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 4,
   },
   billingButtonSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   upgradeText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: 16,
     lineHeight: 24,
   },
   upgradeButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   upgradeButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   activityList: {
     gap: 16,
   },
   activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   activityIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
   },
   activityContent: {
     flex: 1,
   },
   activityTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 2,
   },
   activityDate: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   supportText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: 16,
     lineHeight: 24,
   },
@@ -379,7 +430,7 @@ const styles = StyleSheet.create({
   },
   contactItem: {
     fontSize: 16,
-    color: '#1F2937',
+    color: "#1F2937",
   },
   headerSpacer: {
     width: 24,

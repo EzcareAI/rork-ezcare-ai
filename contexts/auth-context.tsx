@@ -2,7 +2,6 @@ import createContextHook from "@nkzw/create-context-hook";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase, User } from "@/lib/supabase";
 import { Session, AuthChangeEvent } from "@supabase/supabase-js";
-import { trpcClient } from "@/lib/trpc";
 
 export interface AuthState {
   user: User | null;
@@ -30,31 +29,10 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
 
   const loadUserProfile = useCallback(async (userId: string) => {
     try {
-      // Try to load user via tRPC first (bypasses RLS)
       if (__DEV__) {
-        console.log("Loading user profile via tRPC for userId:", userId);
+        console.log("Loading user profile for userId:", userId);
       }
-      const result = await trpcClient.user.getUser.query({ userId });
-      if (result.success && result.user) {
-        if (__DEV__) {
-          console.log("User loaded successfully via tRPC");
-        }
-        setUser(result.user);
-        setIsLoading(false);
-        return;
-      }
-    } catch (error) {
-      if (__DEV__) {
-        console.log(
-          "tRPC user fetch failed, trying direct Supabase:",
-          error instanceof Error ? error.message : "Unknown error"
-        );
-      }
-      // Don't fail completely, continue with Supabase fallback
-    }
 
-    try {
-      // Fallback to direct Supabase query
       const { data, error } = await supabase
         .from("users")
         .select("*")
@@ -63,26 +41,38 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
 
       if (error) {
         console.error("Error loading user profile:", error.message, error.code);
-        // If user doesn't exist, try to create it via tRPC
+        // If user doesn't exist, try to create it directly
         if (error.code === "PGRST116") {
           if (__DEV__) {
-            console.log(
-              "User profile not found, attempting to create via tRPC"
-            );
+            console.log("User profile not found, attempting to create");
           }
           try {
-            const createResult = await trpcClient.user.createUser.mutate({
-              userId,
-              email: "", // Will be filled by the auth trigger
-            });
-            if (createResult.success && createResult.user) {
-              setUser(createResult.user);
+            // Get the current session to get user email
+            const { data: sessionData } = await supabase.auth.getSession();
+            const email = sessionData.session?.user?.email || "";
+
+            const { data: newUser, error: createError } = await supabase
+              .from("users")
+              .insert({
+                id: userId,
+                email,
+                name: null,
+                credits: 20,
+                subscription_plan: "trial",
+              })
+              .select()
+              .single();
+
+            if (createError) {
+              console.error("Failed to create user:", createError);
+            } else if (newUser) {
+              setUser(newUser);
               setIsLoading(false);
               return;
             }
           } catch (createError) {
             if (__DEV__) {
-              console.error("Failed to create user via tRPC:", createError);
+              console.error("Failed to create user:", createError);
             }
           }
         }
@@ -220,15 +210,21 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
         }
 
         if (data.user) {
-          // Create user profile immediately via tRPC
+          // Create user profile immediately via direct Supabase
           try {
-            const result = await trpcClient.user.createUser.mutate({
-              userId: data.user.id,
+            const { error: insertError } = await supabase.from("users").insert({
+              id: data.user.id,
               email: data.user.email || email,
-              name: name || "",
+              name: name || null,
+              credits: 20,
+              subscription_plan: "trial",
             });
-            if (__DEV__) {
-              console.log("User profile created:", result);
+
+            if (insertError) {
+              console.error("Failed to create user profile:", insertError);
+              // Continue anyway, the auth trigger might handle it
+            } else if (__DEV__) {
+              console.log("User profile created successfully");
             }
 
             // If email confirmation is disabled, user is immediately confirmed
@@ -242,7 +238,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
           } catch (apiError) {
             if (__DEV__) {
               console.log(
-                "User profile creation via tRPC failed:",
+                "User profile creation failed:",
                 apiError instanceof Error ? apiError.message : "Unknown error"
               );
             }
@@ -343,23 +339,28 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
     }
 
     try {
-      // Delete user data via tRPC
-      const result = await trpcClient.user.deleteAccount.mutate({
-        userId: user.id,
-      });
+      // Delete user data directly via Supabase
+      // First delete related data (quiz responses, chats, subscriptions)
+      await supabase.from("quiz_responses").delete().eq("user_id", user.id);
+      await supabase.from("chats").delete().eq("user_id", user.id);
+      await supabase.from("subscriptions").delete().eq("user_id", user.id);
 
-      if (result.success) {
-        // Sign out the user
-        await supabase.auth.signOut();
-        setUser(null);
-        setSession(null);
-        return { success: true };
-      } else {
+      // Then delete the user profile
+      const { error } = await supabase.from("users").delete().eq("id", user.id);
+
+      if (error) {
+        console.error("Failed to delete user data:", error);
         return {
           success: false,
-          error: result.error || "Failed to delete account",
+          error: "Failed to delete account data",
         };
       }
+
+      // Sign out the user
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      return { success: true };
     } catch (error) {
       console.error("Delete account error:", error);
       return { success: false, error: "Failed to delete account" };
