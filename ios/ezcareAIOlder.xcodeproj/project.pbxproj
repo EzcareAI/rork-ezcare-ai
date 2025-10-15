@@ -8,28 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		2AC88531F077A267FFD88B00 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 606C356BD52B1A7E74CCE7C4 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		98540ABC6E36798C61511AE1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F2CDF855750B3AE874EEEEFF /* PrivacyInfo.xcprivacy */; };
+		434F2B57713AC70E40FC706C /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71EE81AEA6FBA83766A197A3 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		CF3C7CDF12CDE8EB0224641D /* libPods-ezcareAI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 21A4DB62497F2814E31B318F /* libPods-ezcareAI.a */; };
-		EE5A67663C6859FB4DADFC27 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6673F83BDBF855FA1A5156B4 /* ExpoModulesProvider.swift */; };
+		E320E7C90A6D64248BC512C2 /* libPods-ezcareAIOlder.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 577BB19B2FBAA51A34A95DE6 /* libPods-ezcareAIOlder.a */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* ezcareAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ezcareAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ezcareAI/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ezcareAI/Info.plist; sourceTree = "<group>"; };
-		21A4DB62497F2814E31B318F /* libPods-ezcareAI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ezcareAI.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		4A2ED88B57AEF1FFA003C64D /* Pods-ezcareAI.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ezcareAI.debug.xcconfig"; path = "Target Support Files/Pods-ezcareAI/Pods-ezcareAI.debug.xcconfig"; sourceTree = "<group>"; };
-		6673F83BDBF855FA1A5156B4 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ezcareAI/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = ezcareAI/SplashScreen.storyboard; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* ezcareAIOlder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ezcareAIOlder.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ezcareAIOlder/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ezcareAIOlder/Info.plist; sourceTree = "<group>"; };
+		1809C218907ECD09B1E60DFF /* Pods-ezcareAIOlder.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ezcareAIOlder.release.xcconfig"; path = "Target Support Files/Pods-ezcareAIOlder/Pods-ezcareAIOlder.release.xcconfig"; sourceTree = "<group>"; };
+		44A7E6C06C0779204911DDD8 /* Pods-ezcareAIOlder.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ezcareAIOlder.debug.xcconfig"; path = "Target Support Files/Pods-ezcareAIOlder/Pods-ezcareAIOlder.debug.xcconfig"; sourceTree = "<group>"; };
+		577BB19B2FBAA51A34A95DE6 /* libPods-ezcareAIOlder.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ezcareAIOlder.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		606C356BD52B1A7E74CCE7C4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = ezcareAIOlder/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		71EE81AEA6FBA83766A197A3 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ezcareAIOlder/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = ezcareAIOlder/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = ezcareAI/AppDelegate.swift; sourceTree = "<group>"; };
-		F11748442D0722820044C1D9 /* ezcareAI-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "ezcareAI-Bridging-Header.h"; path = "ezcareAI/ezcareAI-Bridging-Header.h"; sourceTree = "<group>"; };
-		F2CDF855750B3AE874EEEEFF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = ezcareAI/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		F6EB1970863F826AA7C9115A /* Pods-ezcareAI.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ezcareAI.release.xcconfig"; path = "Target Support Files/Pods-ezcareAI/Pods-ezcareAI.release.xcconfig"; sourceTree = "<group>"; };
+		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = ezcareAIOlder/AppDelegate.swift; sourceTree = "<group>"; };
+		F11748442D0722820044C1D9 /* ezcareAIOlder-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "ezcareAIOlder-Bridging-Header.h"; path = "ezcareAIOlder/ezcareAIOlder-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,32 +37,32 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CF3C7CDF12CDE8EB0224641D /* libPods-ezcareAI.a in Frameworks */,
+				E320E7C90A6D64248BC512C2 /* libPods-ezcareAIOlder.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13B07FAE1A68108700A75B9A /* ezcareAI */ = {
+		13B07FAE1A68108700A75B9A /* ezcareAIOlder */ = {
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
-				F11748442D0722820044C1D9 /* ezcareAI-Bridging-Header.h */,
+				F11748442D0722820044C1D9 /* ezcareAIOlder-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				F2CDF855750B3AE874EEEEFF /* PrivacyInfo.xcprivacy */,
+				606C356BD52B1A7E74CCE7C4 /* PrivacyInfo.xcprivacy */,
 			);
-			name = ezcareAI;
+			name = ezcareAIOlder;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				21A4DB62497F2814E31B318F /* libPods-ezcareAI.a */,
+				577BB19B2FBAA51A34A95DE6 /* libPods-ezcareAIOlder.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -77,12 +77,12 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* ezcareAI */,
+				13B07FAE1A68108700A75B9A /* ezcareAIOlder */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				D6FFC81E776B737076B2FE99 /* Pods */,
-				FCB806C821559DFFC62F2043 /* ExpoModulesProviders */,
+				BDE251705441BE9B61C16DFA /* Pods */,
+				F5BEC72B4D2D556691318A10 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -92,17 +92,9 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* ezcareAI.app */,
+				13B07F961A680F5B00A75B9A /* ezcareAIOlder.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		B6D06BB9377CFE5321ADC503 /* ezcareAI */ = {
-			isa = PBXGroup;
-			children = (
-				6673F83BDBF855FA1A5156B4 /* ExpoModulesProvider.swift */,
-			);
-			name = ezcareAI;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -111,23 +103,31 @@
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
 			);
 			name = Supporting;
-			path = ezcareAI/Supporting;
+			path = ezcareAIOlder/Supporting;
 			sourceTree = "<group>";
 		};
-		D6FFC81E776B737076B2FE99 /* Pods */ = {
+		BDE251705441BE9B61C16DFA /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				4A2ED88B57AEF1FFA003C64D /* Pods-ezcareAI.debug.xcconfig */,
-				F6EB1970863F826AA7C9115A /* Pods-ezcareAI.release.xcconfig */,
+				44A7E6C06C0779204911DDD8 /* Pods-ezcareAIOlder.debug.xcconfig */,
+				1809C218907ECD09B1E60DFF /* Pods-ezcareAIOlder.release.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
-		FCB806C821559DFFC62F2043 /* ExpoModulesProviders */ = {
+		E8C43D1CEE5C70E454FD7FD1 /* ezcareAIOlder */ = {
 			isa = PBXGroup;
 			children = (
-				B6D06BB9377CFE5321ADC503 /* ezcareAI */,
+				71EE81AEA6FBA83766A197A3 /* ExpoModulesProvider.swift */,
+			);
+			name = ezcareAIOlder;
+			sourceTree = "<group>";
+		};
+		F5BEC72B4D2D556691318A10 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				E8C43D1CEE5C70E454FD7FD1 /* ezcareAIOlder */,
 			);
 			name = ExpoModulesProviders;
 			sourceTree = "<group>";
@@ -135,26 +135,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		13B07F861A680F5B00A75B9A /* ezcareAI */ = {
+		13B07F861A680F5B00A75B9A /* ezcareAIOlder */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ezcareAI" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ezcareAIOlder" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				8AAF32A6DB94982E90E3D00A /* [Expo] Configure project */,
+				A7693760BAD48B56648A3910 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				6B6A36658509E2D3298C1E11 /* [CP] Embed Pods Frameworks */,
+				003FD22532D519210FC6267C /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = ezcareAI;
-			productName = ezcareAI;
-			productReference = 13B07F961A680F5B00A75B9A /* ezcareAI.app */;
+			name = ezcareAIOlder;
+			productName = ezcareAIOlder;
+			productReference = 13B07F961A680F5B00A75B9A /* ezcareAIOlder.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -170,7 +170,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ezcareAI" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ezcareAIOlder" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -183,7 +183,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* ezcareAI */,
+				13B07F861A680F5B00A75B9A /* ezcareAIOlder */,
 			);
 		};
 /* End PBXProject section */
@@ -196,13 +196,31 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				98540ABC6E36798C61511AE1 /* PrivacyInfo.xcprivacy in Resources */,
+				2AC88531F077A267FFD88B00 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		003FD22532D519210FC6267C /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-ezcareAIOlder/Pods-ezcareAIOlder-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ezcareAIOlder/Pods-ezcareAIOlder-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -233,29 +251,11 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-ezcareAI-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-ezcareAIOlder-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		6B6A36658509E2D3298C1E11 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ezcareAI/Pods-ezcareAI-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ezcareAI/Pods-ezcareAI-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
@@ -264,7 +264,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ezcareAI/Pods-ezcareAI-resources.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-ezcareAIOlder/Pods-ezcareAIOlder-resources.sh",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
@@ -311,10 +311,10 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ezcareAI/Pods-ezcareAI-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ezcareAIOlder/Pods-ezcareAIOlder-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		8AAF32A6DB94982E90E3D00A /* [Expo] Configure project */ = {
+		A7693760BAD48B56648A3910 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -331,7 +331,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-ezcareAI/expo-configure-project.sh\"\n";
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-ezcareAIOlder/expo-configure-project.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -341,7 +341,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				EE5A67663C6859FB4DADFC27 /* ExpoModulesProvider.swift in Sources */,
+				434F2B57713AC70E40FC706C /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -350,18 +350,18 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 4A2ED88B57AEF1FFA003C64D /* Pods-ezcareAI.debug.xcconfig */;
+			baseConfigurationReference = 44A7E6C06C0779204911DDD8 /* Pods-ezcareAIOlder.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = ezcareAI/ezcareAI.entitlements;
+				CODE_SIGN_ENTITLEMENTS = ezcareAIOlder/ezcareAIOlder.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
-				INFOPLIST_FILE = ezcareAI/Info.plist;
+				INFOPLIST_FILE = ezcareAIOlder/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -375,8 +375,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = app.rork.zvfley8yoowwhncate9z5;
-				PRODUCT_NAME = ezcareAI;
-				SWIFT_OBJC_BRIDGING_HEADER = "ezcareAI/ezcareAI-Bridging-Header.h";
+				PRODUCT_NAME = ezcareAIOlder;
+				SWIFT_OBJC_BRIDGING_HEADER = "ezcareAIOlder/ezcareAIOlder-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -386,13 +386,13 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F6EB1970863F826AA7C9115A /* Pods-ezcareAI.release.xcconfig */;
+			baseConfigurationReference = 1809C218907ECD09B1E60DFF /* Pods-ezcareAIOlder.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = ezcareAI/ezcareAI.entitlements;
+				CODE_SIGN_ENTITLEMENTS = ezcareAIOlder/ezcareAIOlder.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				INFOPLIST_FILE = ezcareAI/Info.plist;
+				INFOPLIST_FILE = ezcareAIOlder/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -406,8 +406,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = app.rork.zvfley8yoowwhncate9z5;
-				PRODUCT_NAME = ezcareAI;
-				SWIFT_OBJC_BRIDGING_HEADER = "ezcareAI/ezcareAI-Bridging-Header.h";
+				PRODUCT_NAME = ezcareAIOlder;
+				SWIFT_OBJC_BRIDGING_HEADER = "ezcareAIOlder/ezcareAIOlder-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -541,7 +541,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ezcareAI" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ezcareAIOlder" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -550,7 +550,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ezcareAI" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ezcareAIOlder" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
