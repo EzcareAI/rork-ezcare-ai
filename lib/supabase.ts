@@ -1,29 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 // Environment variable validation
 function validateEnvVars() {
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-  
-  console.log('Supabase env validation:', {
-    url: supabaseUrl ? 'DEFINED' : 'UNDEFINED',
-    key: supabaseAnonKey ? 'DEFINED' : 'UNDEFINED',
-    env: __DEV__ ? 'development' : 'production',
-    mode: 'PRODUCTION'
-  });
-  
+
+
   if (!supabaseUrl || !supabaseAnonKey) {
     const error = `Missing Supabase environment variables. Please check your .env.local file. URL=${!!supabaseUrl}, KEY=${!!supabaseAnonKey}`;
     console.error(error);
     throw new Error(error);
   }
-  
+
   return { supabaseUrl, supabaseAnonKey };
 }
 
 const { supabaseUrl, supabaseAnonKey } = validateEnvVars();
-
-
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -39,7 +31,7 @@ export interface User {
   email: string;
   name?: string;
   credits: number;
-  subscription_plan: 'trial' | 'starter' | 'pro' | 'premium';
+  subscription_plan: "trial" | "starter" | "pro" | "premium";
   referral_code?: string;
   credits_reset_date: string;
   created_at: string;
@@ -79,8 +71,8 @@ export interface Subscription {
   user_id: string;
   stripe_customer_id?: string;
   stripe_subscription_id?: string;
-  plan: 'trial' | 'starter' | 'pro' | 'premium';
-  status: 'active' | 'canceled' | 'past_due' | 'unpaid';
+  plan: "trial" | "starter" | "pro" | "premium";
+  status: "active" | "canceled" | "past_due" | "unpaid";
   current_period_start?: string;
   current_period_end?: string;
   created_at: string;

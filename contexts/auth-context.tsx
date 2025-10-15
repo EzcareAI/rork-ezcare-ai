@@ -1,17 +1,22 @@
-import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase, User } from '@/lib/supabase';
-import { Session, AuthChangeEvent } from '@supabase/supabase-js';
-import { trpcClient } from '@/lib/trpc';
-
-
+import createContextHook from "@nkzw/create-context-hook";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase, User } from "@/lib/supabase";
+import { Session, AuthChangeEvent } from "@supabase/supabase-js";
+import { trpcClient } from "@/lib/trpc";
 
 export interface AuthState {
-  user: User | null; 
+  user: User | null;
   session: Session | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (email: string, password: string, name?: string) => Promise<{ success: boolean; error?: string }>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  signup: (
+    email: string,
+    password: string,
+    name?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateCredits: (credits: number) => Promise<void>;
   updateSubscription: (plan: string) => Promise<void>;
@@ -27,12 +32,12 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
     try {
       // Try to load user via tRPC first (bypasses RLS)
       if (__DEV__) {
-        console.log('Loading user profile via tRPC for userId:', userId);
+        console.log("Loading user profile via tRPC for userId:", userId);
       }
       const result = await trpcClient.user.getUser.query({ userId });
       if (result.success && result.user) {
         if (__DEV__) {
-          console.log('User loaded successfully via tRPC');
+          console.log("User loaded successfully via tRPC");
         }
         setUser(result.user);
         setIsLoading(false);
@@ -40,7 +45,10 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
       }
     } catch (error) {
       if (__DEV__) {
-        console.log('tRPC user fetch failed, trying direct Supabase:', error instanceof Error ? error.message : 'Unknown error');
+        console.log(
+          "tRPC user fetch failed, trying direct Supabase:",
+          error instanceof Error ? error.message : "Unknown error"
+        );
       }
       // Don't fail completely, continue with Supabase fallback
     }
@@ -48,22 +56,24 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
     try {
       // Fallback to direct Supabase query
       const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
+        .from("users")
+        .select("*")
+        .eq("id", userId)
         .maybeSingle();
 
       if (error) {
-        console.error('Error loading user profile:', error.message, error.code);
+        console.error("Error loading user profile:", error.message, error.code);
         // If user doesn't exist, try to create it via tRPC
-        if (error.code === 'PGRST116') {
+        if (error.code === "PGRST116") {
           if (__DEV__) {
-            console.log('User profile not found, attempting to create via tRPC');
+            console.log(
+              "User profile not found, attempting to create via tRPC"
+            );
           }
           try {
             const createResult = await trpcClient.user.createUser.mutate({
               userId,
-              email: '', // Will be filled by the auth trigger
+              email: "", // Will be filled by the auth trigger
             });
             if (createResult.success && createResult.user) {
               setUser(createResult.user);
@@ -72,7 +82,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
             }
           } catch (createError) {
             if (__DEV__) {
-              console.error('Failed to create user via tRPC:', createError);
+              console.error("Failed to create user via tRPC:", createError);
             }
           }
         }
@@ -84,7 +94,10 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
         setUser(data);
       }
     } catch (error) {
-      console.error('Error loading user profile:', error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        "Error loading user profile:",
+        error instanceof Error ? error.message : "Unknown error"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -92,14 +105,16 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const initializeAuth = async () => {
       try {
         // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (!isMounted) return;
-        
+
         setSession(session);
         if (session?.user) {
           await loadUserProfile(session.user.id);
@@ -107,7 +122,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error("Error initializing auth:", error);
         if (isMounted) {
           setIsLoading(false);
         }
@@ -115,31 +130,35 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
     };
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      if (!isMounted) return;
-      
-      // Use setTimeout to ensure state updates happen after render
-      setTimeout(async () => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
         if (!isMounted) return;
-        
-        try {
-          if (__DEV__ && event && session?.user?.email) {
-            console.log('Auth state changed:', event, session.user.email);
-          }
-          setSession(session);
-          
-          if (session?.user) {
-            await loadUserProfile(session.user.id);
-          } else {
-            setUser(null);
+
+        // Use setTimeout to ensure state updates happen after render
+        setTimeout(async () => {
+          if (!isMounted) return;
+
+          try {
+            if (__DEV__ && event && session?.user?.email) {
+              console.log("Auth state changed:", event, session.user.email);
+            }
+            setSession(session);
+
+            if (session?.user) {
+              await loadUserProfile(session.user.id);
+            } else {
+              setUser(null);
+              setIsLoading(false);
+            }
+          } catch (error) {
+            console.error("Error in auth state change handler:", error);
             setIsLoading(false);
           }
-        } catch (error) {
-          console.error('Error in auth state change handler:', error);
-          setIsLoading(false);
-        }
-      }, 0);
-    });
+        }, 0);
+      }
+    );
 
     initializeAuth();
 
@@ -148,8 +167,6 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
       subscription.unsubscribe();
     };
   }, [loadUserProfile]);
-
-
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -169,64 +186,80 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
         // This prevents the brief moment where user is null
         return { success: true };
       }
-      
+
       setIsLoading(false);
-      return { success: false, error: 'Login failed' };
+      return { success: false, error: "Login failed" };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       setIsLoading(false);
-      return { success: false, error: 'Login failed' };
+      return { success: false, error: "Login failed" };
     }
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, name?: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name },
-          emailRedirectTo: `${process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || (typeof window !== 'undefined' ? window.location.origin : 'https://zvfley8yoowhncate9z5.rork.app')}/auth/callback`
-        }
-      });
+  const signup = useCallback(
+    async (email: string, password: string, name?: string) => {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name },
+            emailRedirectTo: `${
+              process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") ||
+              (typeof window !== "undefined"
+                ? window.location.origin
+                : "https://zvfley8yoowhncate9z5.rork.app")
+            }/auth/callback`,
+          },
+        });
 
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      if (data.user) {
-        // Create user profile immediately via tRPC
-        try {
-          const result = await trpcClient.user.createUser.mutate({
-            userId: data.user.id,
-            email: data.user.email || email,
-            name: name || '',
-          });
-          if (__DEV__) {
-            console.log('User profile created:', result);
-          }
-          
-          // If email confirmation is disabled, user is immediately confirmed
-          if (data.user.email_confirmed_at || !data.user.confirmation_sent_at) {
-            // User is confirmed, load their profile
-            await loadUserProfile(data.user.id);
-          }
-        } catch (apiError) {
-          if (__DEV__) {
-            console.log('User profile creation via tRPC failed:', apiError instanceof Error ? apiError.message : 'Unknown error');
-          }
-          // Continue anyway, the auth trigger might handle it
+        console.log("Signup response data:", data);
+        console.log("Signup response error:", error);
+        if (error) {
+          return { success: false, error: error.message };
         }
 
-        return { success: true };
+        if (data.user) {
+          // Create user profile immediately via tRPC
+          try {
+            const result = await trpcClient.user.createUser.mutate({
+              userId: data.user.id,
+              email: data.user.email || email,
+              name: name || "",
+            });
+            if (__DEV__) {
+              console.log("User profile created:", result);
+            }
+
+            // If email confirmation is disabled, user is immediately confirmed
+            if (
+              data.user.email_confirmed_at ||
+              !data.user.confirmation_sent_at
+            ) {
+              // User is confirmed, load their profile
+              await loadUserProfile(data.user.id);
+            }
+          } catch (apiError) {
+            if (__DEV__) {
+              console.log(
+                "User profile creation via tRPC failed:",
+                apiError instanceof Error ? apiError.message : "Unknown error"
+              );
+            }
+            // Continue anyway, the auth trigger might handle it
+          }
+
+          return { success: true };
+        }
+
+        return { success: false, error: "Signup failed" };
+      } catch (error) {
+        console.error("Signup error:", error);
+        return { success: false, error: "Signup failed" };
       }
-      
-      return { success: false, error: 'Signup failed' };
-    } catch (error) {
-      console.error('Signup error:', error);
-      return { success: false, error: 'Signup failed' };
-    }
-  }, [loadUserProfile]);
+    },
+    [loadUserProfile]
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -234,72 +267,87 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
       setUser(null);
       setSession(null);
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error("Error logging out:", error);
     }
   }, []);
 
-  const updateCredits = useCallback(async (credits: number) => {
-    if (user) {
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .update({ credits })
-          .eq('id', user.id)
-          .select()
-          .single();
+  const updateCredits = useCallback(
+    async (credits: number) => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from("users")
+            .update({ credits })
+            .eq("id", user.id)
+            .select()
+            .single();
 
-        if (error) {
-          console.error('Error updating credits:', error);
-          return;
-        }
+          if (error) {
+            console.error("Error updating credits:", error);
+            return;
+          }
 
-        if (data) {
-          setUser(data);
+          if (data) {
+            setUser(data);
+          }
+        } catch (error) {
+          console.error("Error updating credits:", error);
         }
-      } catch (error) {
-        console.error('Error updating credits:', error);
       }
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
-  const updateSubscription = useCallback(async (plan: string) => {
-    if (user) {
-      try {
-        const credits = plan === 'starter' ? 200 : plan === 'pro' ? 1000 : plan === 'premium' ? 999999 : user.credits;
-        
-        const { data, error } = await supabase
-          .from('users')
-          .update({ 
-            subscription_plan: plan as User['subscription_plan'],
-            credits 
-          })
-          .eq('id', user.id)
-          .select()
-          .single();
+  const updateSubscription = useCallback(
+    async (plan: string) => {
+      if (user) {
+        try {
+          const credits =
+            plan === "starter"
+              ? 200
+              : plan === "pro"
+              ? 1000
+              : plan === "premium"
+              ? 999999
+              : user.credits;
 
-        if (error) {
-          console.error('Error updating subscription:', error);
-          return;
+          const { data, error } = await supabase
+            .from("users")
+            .update({
+              subscription_plan: plan as User["subscription_plan"],
+              credits,
+            })
+            .eq("id", user.id)
+            .select()
+            .single();
+
+          if (error) {
+            console.error("Error updating subscription:", error);
+            return;
+          }
+
+          if (data) {
+            setUser(data);
+          }
+        } catch (error) {
+          console.error("Error updating subscription:", error);
         }
-
-        if (data) {
-          setUser(data);
-        }
-      } catch (error) {
-        console.error('Error updating subscription:', error);
       }
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
   const deleteAccount = useCallback(async () => {
     if (!user) {
-      return { success: false, error: 'No user logged in' };
+      return { success: false, error: "No user logged in" };
     }
 
     try {
       // Delete user data via tRPC
-      const result = await trpcClient.user.deleteAccount.mutate({ userId: user.id });
-      
+      const result = await trpcClient.user.deleteAccount.mutate({
+        userId: user.id,
+      });
+
       if (result.success) {
         // Sign out the user
         await supabase.auth.signOut();
@@ -307,23 +355,39 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
         setSession(null);
         return { success: true };
       } else {
-        return { success: false, error: result.error || 'Failed to delete account' };
+        return {
+          success: false,
+          error: result.error || "Failed to delete account",
+        };
       }
     } catch (error) {
-      console.error('Delete account error:', error);
-      return { success: false, error: 'Failed to delete account' };
+      console.error("Delete account error:", error);
+      return { success: false, error: "Failed to delete account" };
     }
   }, [user]);
 
-  return useMemo(() => ({
-    user,
-    session,
-    isLoading,
-    login,
-    signup,
-    logout,
-    updateCredits,
-    updateSubscription,
-    deleteAccount,
-  }), [user, session, isLoading, login, signup, logout, updateCredits, updateSubscription, deleteAccount]);
+  return useMemo(
+    () => ({
+      user,
+      session,
+      isLoading,
+      login,
+      signup,
+      logout,
+      updateCredits,
+      updateSubscription,
+      deleteAccount,
+    }),
+    [
+      user,
+      session,
+      isLoading,
+      login,
+      signup,
+      logout,
+      updateCredits,
+      updateSubscription,
+      deleteAccount,
+    ]
+  );
 });

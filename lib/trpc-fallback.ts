@@ -103,7 +103,7 @@ export const createMockTRPCClient = () => {
 // Test if backend is available with improved error handling
 export const testBackendConnectivity = async (baseUrl: string): Promise<boolean> => {
   try {
-    console.log('🔍 Testing backend connectivity to:', baseUrl);
+    
     
     // First try the health endpoint
     const healthController = new AbortController();

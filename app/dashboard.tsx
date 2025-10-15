@@ -1,89 +1,132 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking, Platform, Modal } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Menu, X, CreditCard, Settings, LogOut, Zap, RotateCcw, TrendingUp, Trash2, MessageSquare, TestTube } from 'lucide-react-native';
-import { useAuth } from '@/contexts/auth-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { trpc } from '@/lib/trpc';
-
-
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Linking,
+  Platform,
+  Modal,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import {
+  Menu,
+  X,
+  CreditCard,
+  Settings,
+  LogOut,
+  Zap,
+  RotateCcw,
+  TrendingUp,
+  Trash2,
+  MessageSquare,
+  TestTube,
+} from "lucide-react-native";
+import { useAuth } from "@/contexts/auth-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { supabase } from "@/lib/supabase";
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
+  const [quizHistory, setQuizHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const { user, logout, deleteAccount, isLoading } = useAuth();
-  const quizHistoryQuery = trpc.quiz.getHistory.useQuery(
-    { userId: user?.id || '' },
-    {
-      enabled: !!user?.id
+
+  useEffect(() => {
+    async function fetchQuizHistory() {
+      if (!user?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("quiz_responses")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching quiz history:", error);
+          Alert.alert("Error", "Failed to load quiz history");
+          return;
+        }
+
+        setQuizHistory(data || []);
+      } catch (error) {
+        console.error("Error:", error);
+        Alert.alert("Error", "Failed to load quiz history");
+      } finally {
+        setIsLoadingHistory(false);
+      }
     }
-  );
+
+    fetchQuizHistory();
+  }, [user?.id]);
 
   useEffect(() => {
     // Only redirect if we're not loading and there's no user
     if (!isLoading && !user) {
-      router.replace('/');
+      router.replace("/");
     }
   }, [user, isLoading]);
 
-  const quizHistory = quizHistoryQuery.data || [];
   const latestQuizResult = quizHistory.length > 0 ? quizHistory[0] : null;
 
-
-
   const handleLogout = async () => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       setShowLogoutModal(true);
     } else {
-      Alert.alert(
-        'Sign Out',
-        'Are you sure you want to sign out?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Sign Out', 
-            style: 'destructive',
-            onPress: async () => {
-              await logout();
-              router.replace('/');
-            }
-          }
-        ]
-      );
+      Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            await logout();
+            router.replace("/");
+          },
+        },
+      ]);
     }
   };
 
   const confirmLogout = async () => {
     setShowLogoutModal(false);
     await logout();
-    router.replace('/');
+    router.replace("/");
   };
 
   const handleDeleteAccount = async () => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       setShowDeleteModal(true);
     } else {
       Alert.alert(
-        'Delete Account',
-        'This will permanently delete your account and all your data. This action cannot be undone.',
+        "Delete Account",
+        "This will permanently delete your account and all your data. This action cannot be undone.",
         [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Delete', 
-            style: 'destructive',
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
             onPress: async () => {
               const result = await deleteAccount();
               if (result.success) {
-                Alert.alert('Account Deleted', 'Your account and all data have been permanently deleted.');
-                router.replace('/');
+                Alert.alert(
+                  "Account Deleted",
+                  "Your account and all data have been permanently deleted."
+                );
+                router.replace("/");
               } else {
-                Alert.alert('Error', result.error || 'Failed to delete account. Please try again.');
+                Alert.alert(
+                  "Error",
+                  result.error || "Failed to delete account. Please try again."
+                );
               }
-            }
-          }
+            },
+          },
         ]
       );
     }
@@ -93,22 +136,24 @@ export default function DashboardPage() {
     setShowDeleteModal(false);
     const result = await deleteAccount();
     if (result.success) {
-      router.replace('/');
+      router.replace("/");
     }
   };
 
   const handleWhatsApp = () => {
-    const message = encodeURIComponent('Hi! I\'d like to try EZCare AI on WhatsApp.');
+    const message = encodeURIComponent(
+      "Hi! I'd like to try EZCare AI on WhatsApp."
+    );
     const url = `https://wa.me/1234567890?text=${message}`;
     Linking.openURL(url).catch(() => {
-      console.log('Could not open WhatsApp');
+      console.log("Could not open WhatsApp");
     });
   };
 
   const getScoreColor = (score: number): string => {
-    if (score >= 80) return '#10B981';
-    if (score >= 60) return '#F59E0B';
-    return '#EF4444';
+    if (score >= 80) return "#10B981";
+    if (score >= 60) return "#F59E0B";
+    return "#EF4444";
   };
 
   // Show loading state while auth is loading
@@ -141,12 +186,15 @@ export default function DashboardPage() {
         </View>
       </View>
 
-      <ScrollView style={styles.mainContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.mainContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Health Score Card */}
         {latestQuizResult && (
           <View style={styles.healthScoreCard}>
             <LinearGradient
-              colors={['#4F46E5', '#06B6D4', '#10B981']}
+              colors={["#4F46E5", "#06B6D4", "#10B981"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.scoreGradient}
@@ -160,10 +208,10 @@ export default function DashboardPage() {
                   <Text style={styles.scoreLabel}>Health Score</Text>
                 </View>
                 <View style={styles.scoreItem}>
-                  <Text style={styles.scoreNumber}>
-                    {latestQuizResult.bmi}
+                  <Text style={styles.scoreNumber}>{latestQuizResult.bmi}</Text>
+                  <Text style={styles.scoreLabel}>
+                    BMI ({latestQuizResult.bmi_category})
                   </Text>
-                  <Text style={styles.scoreLabel}>BMI ({latestQuizResult.bmi_category})</Text>
                 </View>
               </View>
             </LinearGradient>
@@ -180,16 +228,18 @@ export default function DashboardPage() {
             <View style={styles.historyChart}>
               {quizHistory.slice(-5).map((result) => (
                 <View key={result.id} style={styles.historyBar}>
-                  <View 
+                  <View
                     style={[
-                      styles.historyBarFill, 
-                      { 
+                      styles.historyBarFill,
+                      {
                         height: `${result.health_score}%`,
-                        backgroundColor: getScoreColor(result.health_score)
-                      }
-                    ]} 
+                        backgroundColor: getScoreColor(result.health_score),
+                      },
+                    ]}
                   />
-                  <Text style={styles.historyBarLabel}>{result.health_score}</Text>
+                  <Text style={styles.historyBarLabel}>
+                    {result.health_score}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -200,25 +250,25 @@ export default function DashboardPage() {
         <View style={styles.actionsCard}>
           <Text style={styles.actionsTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push('/quiz')}
+              onPress={() => router.push("/quiz")}
             >
               <RotateCcw size={24} color="#10B981" />
               <Text style={styles.actionButtonText}>Retake Health Quiz</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push('/chat')}
+              onPress={() => router.push("/chat")}
             >
               <MessageSquare size={24} color="#10B981" />
               <Text style={styles.actionButtonText}>Chat with Ez</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push('/backend-test')}
+              onPress={() => router.push("/backend-test")}
             >
               <TestTube size={24} color="#3B82F6" />
               <Text style={styles.actionButtonText}>Backend Test</Text>
@@ -230,9 +280,10 @@ export default function DashboardPage() {
         <View style={styles.whatsappCard}>
           <Text style={styles.whatsappTitle}>Try Ez on WhatsApp</Text>
           <Text style={styles.whatsappText}>
-            Get health guidance directly in WhatsApp. Perfect for quick questions on the go!
+            Get health guidance directly in WhatsApp. Perfect for quick
+            questions on the go!
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.whatsappButton}
             onPress={handleWhatsApp}
           >
@@ -248,7 +299,7 @@ export default function DashboardPage() {
       {/* Sidebar */}
       {sidebarOpen && (
         <View style={styles.sidebarOverlay}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.sidebarBackdrop}
             onPress={() => setSidebarOpen(false)}
           />
@@ -263,38 +314,42 @@ export default function DashboardPage() {
             <View style={styles.userInfo}>
               <Text style={styles.userEmail}>{user.email}</Text>
               <View style={styles.planInfo}>
-                <Text style={styles.planText}>{user.subscription_plan.toUpperCase()} Plan</Text>
+                <Text style={styles.planText}>
+                  {user.subscription_plan.toUpperCase()} Plan
+                </Text>
                 <View style={styles.creditsInfo}>
                   <Zap size={16} color="#F59E0B" />
-                  <Text style={styles.creditsCount}>{user.credits} credits</Text>
+                  <Text style={styles.creditsCount}>
+                    {user.credits} credits
+                  </Text>
                 </View>
               </View>
             </View>
 
             <View style={styles.sidebarMenu}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setSidebarOpen(false);
-                  router.push('/pricing');
+                  router.push("/pricing");
                 }}
               >
                 <CreditCard size={20} color="#6B7280" />
                 <Text style={styles.menuText}>Upgrade Plan</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setSidebarOpen(false);
-                  router.push('/billing');
+                  router.push("/billing");
                 }}
               >
                 <Settings size={20} color="#6B7280" />
                 <Text style={styles.menuText}>Billing Portal</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setSidebarOpen(false);
@@ -305,7 +360,7 @@ export default function DashboardPage() {
                 <Text style={styles.deleteAccountText}>Delete Account</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setSidebarOpen(false);
@@ -330,7 +385,9 @@ export default function DashboardPage() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Sign Out</Text>
-            <Text style={styles.modalText}>Are you sure you want to sign out?</Text>
+            <Text style={styles.modalText}>
+              Are you sure you want to sign out?
+            </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
@@ -360,7 +417,8 @@ export default function DashboardPage() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Delete Account</Text>
             <Text style={styles.modalText}>
-              This will permanently delete your account and all your data. This action cannot be undone.
+              This will permanently delete your account and all your data. This
+              action cannot be undone.
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -386,26 +444,26 @@ export default function DashboardPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
   },
   creditsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -413,8 +471,8 @@ const styles = StyleSheet.create({
   },
   creditsText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#92400E',
+    fontWeight: "600",
+    color: "#92400E",
   },
   mainContent: {
     flex: 1,
@@ -426,107 +484,107 @@ const styles = StyleSheet.create({
   scoreGradient: {
     padding: 24,
     borderRadius: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   scoreTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
     marginBottom: 20,
   },
   scoreRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 40,
   },
   scoreItem: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   scoreNumber: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
   },
   scoreLabel: {
     fontSize: 14,
-    color: '#E5E7EB',
+    color: "#E5E7EB",
     marginTop: 4,
   },
   historyCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
   },
   historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
     gap: 8,
   },
   historyTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
   },
   historyChart: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-around",
     height: 120,
     paddingTop: 20,
   },
   historyBar: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   historyBarFill: {
     width: 20,
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
     borderRadius: 10,
     minHeight: 20,
   },
   historyBarLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 8,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   actionsCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
   },
   actionsTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 16,
   },
   actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   actionButton: {
     flex: 1,
-    minWidth: '30%',
-    backgroundColor: '#fff',
+    minWidth: "30%",
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
   },
   actionButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "#1F2937",
+    textAlign: "center",
   },
   chatCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -534,12 +592,12 @@ const styles = StyleSheet.create({
   },
   chatTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 16,
   },
   disclaimer: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: "#FEF2F2",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -547,8 +605,8 @@ const styles = StyleSheet.create({
   },
   disclaimerText: {
     fontSize: 12,
-    color: '#991B1B',
-    textAlign: 'center',
+    color: "#991B1B",
+    textAlign: "center",
   },
   messagesContainer: {
     flex: 1,
@@ -559,77 +617,77 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   userMessage: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   assistantMessage: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   messageBubble: {
-    maxWidth: '80%',
+    maxWidth: "80%",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 16,
   },
   userBubble: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
     borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
   },
   messageText: {
     fontSize: 16,
     lineHeight: 22,
   },
   userText: {
-    color: '#fff',
+    color: "#fff",
   },
   assistantText: {
-    color: '#1F2937',
+    color: "#1F2937",
   },
   messageTime: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     marginTop: 4,
     marginHorizontal: 4,
   },
   typingText: {
     fontSize: 16,
-    color: '#6B7280',
-    fontStyle: 'italic',
+    color: "#6B7280",
+    fontStyle: "italic",
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     gap: 12,
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
     maxHeight: 100,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
   },
   sendButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: "#D1D5DB",
   },
   sidebarOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -638,105 +696,105 @@ const styles = StyleSheet.create({
   },
   sidebarBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   sidebar: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
     width: 300,
-    maxWidth: '80%',
-    backgroundColor: '#fff',
+    maxWidth: "80%",
+    backgroundColor: "#fff",
     paddingTop: 60,
   },
   sidebarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   sidebarTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
   },
   userInfo: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   userEmail: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 8,
   },
   planInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   planText: {
     fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '600',
+    color: "#6B7280",
+    fontWeight: "600",
   },
   creditsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   creditsCount: {
     fontSize: 14,
-    color: '#92400E',
-    fontWeight: '600',
+    color: "#92400E",
+    fontWeight: "600",
   },
   sidebarMenu: {
     paddingTop: 20,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     gap: 12,
   },
   menuText: {
     fontSize: 16,
-    color: '#1F2937',
+    color: "#1F2937",
   },
   deleteAccountText: {
     fontSize: 16,
-    color: '#EF4444',
+    color: "#EF4444",
   },
   whatsappCard: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: "#F0FDF4",
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   whatsappTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 8,
   },
   whatsappText: {
     fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: 16,
     lineHeight: 20,
   },
   whatsappButton: {
-    backgroundColor: '#25D366',
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "#25D366",
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
@@ -744,54 +802,54 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   whatsappButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   whatsappNote: {
     fontSize: 12,
-    color: '#9CA3AF',
-    fontStyle: 'italic',
+    color: "#9CA3AF",
+    fontStyle: "italic",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 24,
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalText: {
     fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: 24,
     lineHeight: 24,
   },
   modalButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   modalButton: {
@@ -799,27 +857,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
   },
   cancelButtonText: {
-    color: '#6B7280',
-    fontWeight: '600',
+    color: "#6B7280",
+    fontWeight: "600",
   },
   confirmButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
   },
   confirmButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
   deleteButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: "#EF4444",
   },
   deleteButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
 });
