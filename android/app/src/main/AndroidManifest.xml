@@ -28,6 +28,9 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="myapp"/>
+                <data android:scheme="myapp" android:host="expo-development-client" />
+        <data android:scheme="myapp" android:host="reset-password" />
+
       </intent-filter>
     </activity>
   </application>

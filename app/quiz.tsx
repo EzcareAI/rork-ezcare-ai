@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,20 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/supabase";
+import CountryPicker, { CountryCode } from "react-native-country-picker-modal";
+import PhoneInput from "react-native-phone-number-input";
+import { AntDesign } from "@expo/vector-icons";
+import RulerPicker from "react-native-ruler-picker";
+const RulerPickerAny: any = RulerPicker;
+
+const PhoneInputAny: any = PhoneInput;
 
 interface QuizData {
   name: string;
@@ -28,17 +36,6 @@ interface QuizData {
   diet: string;
 }
 
-interface QuizResult {
-  id: string;
-  userId: string;
-  data: QuizData;
-  bmi: number;
-  bmiCategory: string;
-  healthScore: number;
-  recommendations: string[];
-  createdAt: Date;
-}
-
 const questions = [
   {
     id: "name",
@@ -47,180 +44,10 @@ const questions = [
     placeholder: "Enter your full name",
   },
   {
-    id: "countryCode",
-    title: "Select your country code",
-    type: "select",
-    options: [
-      "+1 (US/Canada)",
-      "+44 (UK)",
-      "+33 (France)",
-      "+49 (Germany)",
-      "+81 (Japan)",
-      "+86 (China)",
-      "+91 (India)",
-      "+61 (Australia)",
-      "+55 (Brazil)",
-      "+7 (Russia)",
-      "+34 (Spain)",
-      "+39 (Italy)",
-      "+31 (Netherlands)",
-      "+46 (Sweden)",
-      "+47 (Norway)",
-      "+45 (Denmark)",
-      "+41 (Switzerland)",
-      "+43 (Austria)",
-      "+32 (Belgium)",
-      "+351 (Portugal)",
-      "+30 (Greece)",
-      "+48 (Poland)",
-      "+420 (Czech Republic)",
-      "+36 (Hungary)",
-      "+40 (Romania)",
-      "+359 (Bulgaria)",
-      "+385 (Croatia)",
-      "+386 (Slovenia)",
-      "+421 (Slovakia)",
-      "+370 (Lithuania)",
-      "+371 (Latvia)",
-      "+372 (Estonia)",
-      "+358 (Finland)",
-      "+354 (Iceland)",
-      "+353 (Ireland)",
-      "+356 (Malta)",
-      "+357 (Cyprus)",
-      "+352 (Luxembourg)",
-      "+377 (Monaco)",
-      "+378 (San Marino)",
-      "+379 (Vatican)",
-      "+380 (Ukraine)",
-      "+375 (Belarus)",
-      "+373 (Moldova)",
-      "+382 (Montenegro)",
-      "+383 (Kosovo)",
-      "+387 (Bosnia)",
-      "+389 (Macedonia)",
-      "+381 (Serbia)",
-      "+90 (Turkey)",
-      "+98 (Iran)",
-      "+964 (Iraq)",
-      "+966 (Saudi Arabia)",
-      "+971 (UAE)",
-      "+974 (Qatar)",
-      "+973 (Bahrain)",
-      "+968 (Oman)",
-      "+965 (Kuwait)",
-      "+962 (Jordan)",
-      "+963 (Syria)",
-      "+961 (Lebanon)",
-      "+972 (Israel)",
-      "+970 (Palestine)",
-      "+20 (Egypt)",
-      "+212 (Morocco)",
-      "+213 (Algeria)",
-      "+216 (Tunisia)",
-      "+218 (Libya)",
-      "+221 (Senegal)",
-      "+223 (Mali)",
-      "+224 (Guinea)",
-      "+225 (Ivory Coast)",
-      "+226 (Burkina Faso)",
-      "+227 (Niger)",
-      "+228 (Togo)",
-      "+229 (Benin)",
-      "+230 (Mauritius)",
-      "+231 (Liberia)",
-      "+232 (Sierra Leone)",
-      "+233 (Ghana)",
-      "+234 (Nigeria)",
-      "+235 (Chad)",
-      "+236 (Central African Republic)",
-      "+237 (Cameroon)",
-      "+238 (Cape Verde)",
-      "+239 (Sao Tome)",
-      "+240 (Equatorial Guinea)",
-      "+241 (Gabon)",
-      "+242 (Republic of Congo)",
-      "+243 (Democratic Republic of Congo)",
-      "+244 (Angola)",
-      "+245 (Guinea-Bissau)",
-      "+246 (British Indian Ocean Territory)",
-      "+247 (Ascension Island)",
-      "+248 (Seychelles)",
-      "+249 (Sudan)",
-      "+250 (Rwanda)",
-      "+251 (Ethiopia)",
-      "+252 (Somalia)",
-      "+253 (Djibouti)",
-      "+254 (Kenya)",
-      "+255 (Tanzania)",
-      "+256 (Uganda)",
-      "+257 (Burundi)",
-      "+258 (Mozambique)",
-      "+260 (Zambia)",
-      "+261 (Madagascar)",
-      "+262 (Reunion)",
-      "+263 (Zimbabwe)",
-      "+264 (Namibia)",
-      "+265 (Malawi)",
-      "+266 (Lesotho)",
-      "+267 (Botswana)",
-      "+268 (Swaziland)",
-      "+269 (Comoros)",
-      "+290 (Saint Helena)",
-      "+291 (Eritrea)",
-      "+297 (Aruba)",
-      "+298 (Faroe Islands)",
-      "+299 (Greenland)",
-      "+350 (Gibraltar)",
-      "+500 (Falkland Islands)",
-      "+501 (Belize)",
-      "+502 (Guatemala)",
-      "+503 (El Salvador)",
-      "+504 (Honduras)",
-      "+505 (Nicaragua)",
-      "+506 (Costa Rica)",
-      "+507 (Panama)",
-      "+508 (Saint Pierre and Miquelon)",
-      "+509 (Haiti)",
-      "+590 (Guadeloupe)",
-      "+591 (Bolivia)",
-      "+592 (Guyana)",
-      "+593 (Ecuador)",
-      "+594 (French Guiana)",
-      "+595 (Paraguay)",
-      "+596 (Martinique)",
-      "+597 (Suriname)",
-      "+598 (Uruguay)",
-      "+599 (Netherlands Antilles)",
-      "+670 (East Timor)",
-      "+672 (Australian External Territories)",
-      "+673 (Brunei)",
-      "+674 (Nauru)",
-      "+675 (Papua New Guinea)",
-      "+676 (Tonga)",
-      "+677 (Solomon Islands)",
-      "+678 (Vanuatu)",
-      "+679 (Fiji)",
-      "+680 (Palau)",
-      "+681 (Wallis and Futuna)",
-      "+682 (Cook Islands)",
-      "+683 (Niue)",
-      "+684 (American Samoa)",
-      "+685 (Samoa)",
-      "+686 (Kiribati)",
-      "+687 (New Caledonia)",
-      "+688 (Tuvalu)",
-      "+689 (French Polynesia)",
-      "+690 (Tokelau)",
-      "+691 (Micronesia)",
-      "+692 (Marshall Islands)",
-    ],
-  },
-  {
     id: "phone",
     title: "What's your phone number?",
     type: "text",
-    placeholder: "Enter your phone number (without country code)",
+    placeholder: "Enter your phone number",
   },
   {
     id: "height",
@@ -238,7 +65,7 @@ const questions = [
     id: "sleep",
     title: "How many hours do you sleep per night?",
     type: "select",
-    options: ["Less than 5 hours", "5-6 hours", "7-8 hours", "9+ hours"],
+    options: ["Less than 5 hours", "5-6 hours", "7-8 hours", "8+ hours"],
   },
   {
     id: "activity",
@@ -291,19 +118,63 @@ const questions = [
 export default function QuizPage() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Partial<QuizData>>({});
+  const [callingCode, setCallingCode] = useState("1");
+  const [showPicker, setShowPicker] = useState(false);
+  const [countryCode, setCountryCode] = useState("+1");
+  const [countryCCA2, setCountryCCA2] = useState("US");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [heightIsMetric, setHeightIsMetric] = useState(true);
+  const [rulerHeight, setRulerHeight] = useState<number>(
+    () => parseFloat(String(answers.height ?? "").replace(/[^0-9.]/g, "")) || 0
+  );
+  const [weightIsMetric, setWeightIsMetric] = useState(true);
+  const [rulerWeight, setRulerWeight] = useState<number>(
+    () => parseFloat(String(answers.weight ?? "").replace(/[^0-9.]/g, "")) || 0
+  );
+  const phoneInput = useRef<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
 
+  const cmToFeetInches = (cm: number) => {
+    const totalInches = cm / 2.54;
+    const feet = Math.floor(totalInches / 12);
+    const inches = Math.round(totalInches % 12);
+    return { feet, inches };
+  };
+
+  const feetInchesToCm = (feet: number, inches: number) =>
+    (feet * 12 + inches) * 2.54;
+
+  const onRulerValueChange = (value: number) => {
+    setRulerHeight(value);
+    setAnswers((prev) => ({ ...prev, height: String(Math.round(value)) }));
+  };
+  const kgToLbs = (kg: number) => Math.round(kg * 2.2046226218);
   const question = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
 
   const handleAnswer = (value: string) => {
-    setAnswers((prev) => ({ ...prev, [question.id]: value }));
+    setAnswers((prev) => ({ ...prev, [question.id as string]: value }));
   };
 
   const handleNext = () => {
     const currentAnswer = answers[question.id as keyof QuizData];
-    if (!currentAnswer || currentAnswer.trim() === "") {
+
+    if (question.id === "phone") {
+      const phoneDigits = (
+        (currentAnswer as string) ||
+        phoneNumber ||
+        ""
+      ).replace(/\D/g, "");
+      if (phoneDigits.length < 8) {
+        return;
+      }
+    }
+
+    if (
+      !currentAnswer ||
+      (typeof currentAnswer === "string" && currentAnswer.trim() === "")
+    ) {
       Alert.alert(
         "Please answer the question",
         "This field is required to continue."
@@ -328,7 +199,6 @@ export default function QuizPage() {
     height: string,
     weight: string
   ): { bmi: number; category: string } => {
-    // Simple BMI calculation - in a real app, you'd want more robust parsing
     const heightNum = parseFloat(height.replace(/[^0-9.]/g, ""));
     const weightNum = parseFloat(weight.replace(/[^0-9.]/g, ""));
 
@@ -336,18 +206,16 @@ export default function QuizPage() {
       return { bmi: 0, category: "Unknown" };
     }
 
-    // Assume metric if height > 10 (cm), otherwise assume feet
     let heightInM = heightNum;
     if (heightNum > 10) {
-      heightInM = heightNum / 100; // cm to m
+      heightInM = heightNum / 100;
     } else {
-      heightInM = heightNum * 0.3048; // feet to m
+      heightInM = heightNum * 0.3048;
     }
 
-    // Assume kg if weight < 300, otherwise assume lbs
     let weightInKg = weightNum;
     if (weightNum > 300) {
-      weightInKg = weightNum * 0.453592; // lbs to kg
+      weightInKg = weightNum * 0.453592;
     }
 
     const bmi = weightInKg / (heightInM * heightInM);
@@ -363,34 +231,27 @@ export default function QuizPage() {
   const calculateHealthScore = (data: QuizData, bmi: number): number => {
     let score = 100;
 
-    // BMI impact (30 points)
     if (bmi < 18.5 || bmi >= 30) score -= 30;
     else if (bmi >= 25) score -= 15;
 
-    // Sleep impact (15 points)
     if (data.sleep === "Less than 5 hours") score -= 15;
     else if (data.sleep === "5-6 hours") score -= 8;
     else if (data.sleep === "9+ hours") score -= 5;
 
-    // Activity impact (20 points)
     if (data.activity === "Never") score -= 20;
     else if (data.activity === "1-2 times per week") score -= 10;
     else if (data.activity === "3-4 times per week") score -= 5;
 
-    // Smoking impact (15 points)
     if (data.smoking === "Daily") score -= 15;
     else if (data.smoking === "Occasionally") score -= 8;
     else if (data.smoking === "Trying to quit") score -= 5;
 
-    // Alcohol impact (10 points)
     if (data.alcohol === "3+ drinks per week") score -= 10;
     else if (data.alcohol === "1-2 drinks per week") score -= 3;
 
-    // Stress impact (5 points)
     if (data.stress === "Very high") score -= 5;
     else if (data.stress === "High") score -= 3;
 
-    // Diet impact (5 points)
     if (data.diet === "Poor") score -= 5;
     else if (data.diet === "Needs improvement") score -= 3;
 
@@ -456,7 +317,7 @@ export default function QuizPage() {
       );
     }
 
-    return recommendations.slice(0, 3); // Return top 3 recommendations
+    return recommendations.slice(0, 3);
   };
 
   const handleSubmit = async () => {
@@ -469,10 +330,7 @@ export default function QuizPage() {
     }
 
     setIsSubmitting(true);
-    console.log("Submitting quiz data...");
-
     try {
-      console.log("Current user:", user.id); // Debug log
       const quizData = answers as QuizData;
       const { bmi, category } = calculateBMI(quizData.height, quizData.weight);
       const healthScore = calculateHealthScore(quizData, bmi);
@@ -481,17 +339,29 @@ export default function QuizPage() {
         bmi,
         healthScore
       );
-
-      // Extract country code from the selected option
-      const countryCodeMatch = quizData.countryCode.match(/^([+]\d+)/);
+      const rawCountry = (quizData.countryCode as string) || `+${callingCode}`;
+      const countryCodeMatch = rawCountry.match(/^([+]\d+)/);
       const countryCode = countryCodeMatch ? countryCodeMatch[1] : "+1";
 
-      // Save to Supabase
-      let resultId = "local-" + Date.now(); // Fallback ID
-      try {
-        console.log("Saving quiz result to Supabase...");
+      const rawPhone = (quizData.phone as string) || phoneNumber || "";
+      const phoneDigits = rawPhone.replace(/\D/g, "");
+      const storedPhone = rawPhone.startsWith("+")
+        ? rawPhone
+        : `${countryCode}${phoneDigits}`;
 
-        // Debug: Check Supabase connection
+      let resultId = "local-" + Date.now();
+      try {
+        const displayedHeight = heightIsMetric
+          ? `${Math.round(rulerHeight)} cm`
+          : (() => {
+              const { feet, inches } = cmToFeetInches(rulerHeight);
+              return `${feet}′${inches}″`;
+            })();
+
+        const displayedWeight = weightIsMetric
+          ? `${Math.round(rulerWeight)} kg`
+          : `${kgToLbs(rulerWeight)} lb`;
+
         const { data: testConn, error: testError } = await supabase
           .from("quiz_responses")
           .select("count")
@@ -499,8 +369,6 @@ export default function QuizPage() {
 
         if (testError) {
           console.error("Supabase connection test failed:", testError);
-        } else {
-          console.log("Supabase connection successful");
         }
 
         const { data: savedQuiz, error } = await supabase
@@ -508,10 +376,10 @@ export default function QuizPage() {
           .insert({
             user_id: user.id,
             name: quizData.name,
-            phone: quizData.phone,
+            phone: storedPhone,
             country_code: countryCode,
-            height: parseFloat(quizData.height.replace(/[^0-9.]/g, "")) || 0,
-            weight: parseFloat(quizData.weight.replace(/[^0-9.]/g, "")) || 0,
+            height: displayedHeight,
+            weight: displayedWeight,
             sleep_hours:
               quizData.sleep === "Less than 5 hours"
                 ? 4
@@ -585,31 +453,23 @@ export default function QuizPage() {
         if (savedQuiz && savedQuiz[0]) {
           resultId = savedQuiz[0].id;
           console.log(
-            "✅ Quiz result saved successfully to Supabase with ID:",
+            "Quiz result saved successfully to Supabase with ID:",
             resultId
           );
         } else {
           console.warn("⚠️ No data returned from Supabase, using local result");
         }
       } catch (error) {
-        if (__DEV__) {
-          console.warn(
-            "⚠️ Failed to save quiz result to database:",
-            error instanceof Error ? error.message : "Unknown error"
-          );
-          console.log(
-            "📱 Continuing with local result - quiz functionality will work offline"
-          );
-        }
-        // Continue with local result - the quiz functionality should work even without backend
+        console.warn(
+          "⚠️ Failed to save quiz result to database:",
+          error instanceof Error ? error.message : "Unknown error"
+        );
       }
 
-      // Navigate to results page (works with both saved and local results)
       router.push({
         pathname: "/quiz-result",
         params: {
           resultId,
-          // Pass the data as URL params for local results
           localData: JSON.stringify({
             name: quizData.name,
             bmi,
@@ -628,6 +488,16 @@ export default function QuizPage() {
   };
 
   const currentAnswer = answers[question.id as keyof QuizData] || "";
+  const phoneDigits = ((currentAnswer as string) || phoneNumber || "").replace(
+    /\D/g,
+    ""
+  );
+  const isAnswerValid =
+    question.id === "phone"
+      ? phoneDigits.length >= 8
+      : !!currentAnswer &&
+        typeof currentAnswer === "string" &&
+        currentAnswer.trim() !== "";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -640,7 +510,6 @@ export default function QuizPage() {
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
@@ -651,21 +520,217 @@ export default function QuizPage() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Question */}
         <View style={styles.questionContainer}>
           <Text style={styles.questionTitle}>{question.title}</Text>
 
           {question.type === "text" ? (
-            <TextInput
-              style={styles.textInput}
-              placeholder={question.placeholder}
-              value={currentAnswer}
-              onChangeText={handleAnswer}
-              keyboardType={question.id === "phone" ? "phone-pad" : "default"}
-              autoCapitalize={question.id === "phone" ? "none" : "words"}
-            />
+            question.id === "phone" ? (
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#E5E7EB",
+                  borderRadius: 12,
+                  flex: 1,
+                  flexDirection: "row",
+                  backgroundColor: "#F9FAFB",
+                }}
+              >
+                <TouchableOpacity
+                  style={styles.countryBox}
+                  onPress={() => setShowPicker(true)}
+                >
+                  <Text style={styles.countryFlag}>
+                    {String.fromCodePoint(
+                      ...countryCCA2
+                        .toUpperCase()
+                        .split("")
+                        .map((c) => 127397 + c.charCodeAt(0))
+                    )}
+                  </Text>
+                  <Text style={styles.countryText}>{countryCode}</Text>
+                  <AntDesign name="caretdown" size={10} color="black" />
+                </TouchableOpacity>
+                <CountryPicker
+                  visible={showPicker}
+                  countryCode={countryCCA2 as CountryCode}
+                  withFlag
+                  withCallingCode
+                  withFilter
+                  withCountryNameButton={false}
+                  withFlagButton={false}
+                  onClose={() => setShowPicker(false)}
+                  onSelect={(country) => {
+                    setCountryCCA2(country.cca2);
+                    setCountryCode("+" + country.callingCode[0]);
+                    setCallingCode(String(country.callingCode[0] ?? ""));
+                    setAnswers((prev) => ({
+                      ...prev,
+                      countryCode: "+" + country.callingCode[0],
+                    }));
+                    setShowPicker(false);
+                    try {
+                      phoneInput.current?.setCountryCode?.(country.cca2);
+                    } catch (e) {}
+                  }}
+                />
+                <TextInput
+                  style={[styles.textInput, styles.phoneInput]}
+                  value={phoneNumber}
+                  onChangeText={(text: string) => {
+                    setPhoneNumber(text);
+                    handleAnswer(text);
+                  }}
+                  placeholder={question.placeholder}
+                  keyboardType="phone-pad"
+                  returnKeyType="done"
+                  maxLength={15}
+                  placeholderTextColor="#6B7280"
+                />
+              </View>
+            ) : question.id === "height" ? (
+              <View>
+                <View style={styles.toggleRow}>
+                  <Text style={{ color: heightIsMetric ? "#333" : "#aaa" }}>
+                    cm
+                  </Text>
+                  <Switch
+                    value={!heightIsMetric}
+                    onValueChange={() => setHeightIsMetric((s) => !s)}
+                    trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  />
+                  <Text style={{ color: !heightIsMetric ? "#333" : "#aaa" }}>
+                    ft/in
+                  </Text>
+                </View>
+
+                {RulerPickerAny &&
+                (typeof RulerPickerAny === "function" ||
+                  typeof RulerPickerAny === "object") ? (
+                  <RulerPickerAny
+                    min={heightIsMetric ? 100 : feetInchesToCm(3, 0)}
+                    max={heightIsMetric ? 220 : feetInchesToCm(7, 6)}
+                    step={heightIsMetric ? 1 : 2.54}
+                    unit={heightIsMetric ? "cm" : "ft"}
+                    indicatorColor="#10B981"
+                    value={rulerHeight}
+                    onValueChangeEnd={onRulerValueChange}
+                  />
+                ) : (
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder={question.placeholder}
+                    value={String(answers.height ?? rulerHeight)}
+                    onChangeText={(text: string) => {
+                      const cleaned = text.replace(/[^0-9.]/g, "");
+                      if (cleaned === "") {
+                        setRulerHeight(0);
+                        setAnswers((prev) => ({ ...prev, height: "" }));
+                        return;
+                      }
+                      const parsed = parseFloat(cleaned);
+                      if (Number.isNaN(parsed)) return;
+                      setRulerHeight(parsed);
+                      setAnswers((prev) => ({
+                        ...prev,
+                        height: String(Math.round(parsed)),
+                      }));
+                    }}
+                    keyboardType="numeric"
+                    autoCapitalize="none"
+                    placeholderTextColor="#6B7280"
+                  />
+                )}
+
+                <Text style={styles.value}>
+                  {heightIsMetric
+                    ? `${Math.round(rulerHeight)} cm`
+                    : (() => {
+                        const { feet, inches } = cmToFeetInches(rulerHeight);
+                        return `${feet}′${inches}″`;
+                      })()}
+                </Text>
+              </View>
+            ) : question.id === "weight" ? (
+              <View>
+                <View style={styles.toggleRow}>
+                  <Text style={{ color: weightIsMetric ? "#333" : "#aaa" }}>
+                    kg
+                  </Text>
+                  <Switch
+                    value={!weightIsMetric}
+                    onValueChange={() => setWeightIsMetric((s) => !s)}
+                    trackColor={{ false: "#767577", true: "#81b0ff" }}
+                  />
+                  <Text style={{ color: !weightIsMetric ? "#333" : "#aaa" }}>
+                    lb
+                  </Text>
+                </View>
+
+                {RulerPickerAny &&
+                (typeof RulerPickerAny === "function" ||
+                  typeof RulerPickerAny === "object") ? (
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder={question.placeholder}
+                    value={String(answers.weight ?? rulerWeight)}
+                    onChangeText={(text: string) => {
+                      const cleaned = text.replace(/[^0-9.]/g, "");
+                      const num = parseFloat(cleaned) || rulerWeight;
+                      setRulerWeight(num);
+                      setAnswers((prev) => ({
+                        ...prev,
+                        weight: String(Math.round(num)),
+                      }));
+                    }}
+                    keyboardType="numeric"
+                    autoCapitalize="none"
+                    placeholderTextColor="#6B7280"
+                  />
+                ) : (
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder={question.placeholder}
+                    value={String(answers.weight ?? rulerWeight)}
+                    onChangeText={(text: string) => {
+                      const cleaned = text.replace(/[^0-9.]/g, "");
+                      if (cleaned === "") {
+                        setRulerWeight(0);
+                        setAnswers((prev) => ({ ...prev, weight: "" }));
+                        return;
+                      }
+                      const parsed = parseFloat(cleaned);
+                      if (Number.isNaN(parsed)) return;
+                      setRulerWeight(parsed);
+                      setAnswers((prev) => ({
+                        ...prev,
+                        weight: String(Math.round(parsed)),
+                      }));
+                    }}
+                    keyboardType="numeric"
+                    autoCapitalize="none"
+                    placeholderTextColor="#6B7280"
+                  />
+                )}
+
+                <Text style={styles.value}>
+                  {weightIsMetric
+                    ? `${Math.round(rulerWeight)} kg`
+                    : `${kgToLbs(rulerWeight)} lb`}
+                </Text>
+              </View>
+            ) : (
+              <TextInput
+                style={styles.textInput}
+                placeholder={question.placeholder}
+                value={currentAnswer}
+                onChangeText={handleAnswer}
+                keyboardType={question.id === "phone" ? "phone-pad" : "default"}
+                autoCapitalize={question.id === "phone" ? "none" : "words"}
+                placeholderTextColor="#6B7280"
+              />
+            )
           ) : (
-            <View style={styles.optionsContainer}>
+            <View>
               {question.options?.map((option, index) => (
                 <TouchableOpacity
                   key={index}
@@ -690,7 +755,6 @@ export default function QuizPage() {
         </View>
       </ScrollView>
 
-      {/* Navigation */}
       <View style={styles.navigation}>
         {currentQuestion > 0 && (
           <TouchableOpacity style={styles.backButton} onPress={handlePrevious}>
@@ -701,10 +765,10 @@ export default function QuizPage() {
         <TouchableOpacity
           style={[
             styles.nextButton,
-            (!currentAnswer || isSubmitting) && styles.nextButtonDisabled,
+            (!isAnswerValid || isSubmitting) && styles.nextButtonDisabled,
           ]}
           onPress={handleNext}
-          disabled={!currentAnswer || isSubmitting}
+          disabled={!isAnswerValid || isSubmitting}
         >
           <Text style={styles.nextButtonText}>
             {isSubmitting
@@ -717,7 +781,6 @@ export default function QuizPage() {
         </TouchableOpacity>
       </View>
 
-      {/* Disclaimer */}
       <View style={styles.disclaimer}>
         <Text style={styles.disclaimerText}>
           ⚠️ Educational only — not medical advice. For emergencies call 911
@@ -790,9 +853,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#1F2937",
   },
-  optionsContainer: {
-    gap: 12,
-  },
   optionButton: {
     backgroundColor: "#F9FAFB",
     borderWidth: 2,
@@ -838,7 +898,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
   nextButtonDisabled: {
     backgroundColor: "#D1D5DB",
@@ -860,5 +919,44 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 24,
+  },
+  countryBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 6,
+  },
+  countryFlag: {
+    fontSize: 20,
+    marginRight: 6,
+  },
+  countryText: {
+    fontSize: 16,
+    marginRight: 6,
+    color: "black",
+  },
+  phoneInput: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    color: "#1F2937",
+    flex: 1,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    gap: 10,
+    justifyContent: "center",
+  },
+  value: {
+    fontSize: 18,
+    fontWeight: "500",
+    marginTop: 12,
+    textAlign: "center",
   },
 });

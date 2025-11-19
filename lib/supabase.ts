@@ -1,10 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Environment variable validation
 function validateEnvVars() {
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
 
   if (!supabaseUrl || !supabaseAnonKey) {
     const error = `Missing Supabase environment variables. Please check your .env.local file. URL=${!!supabaseUrl}, KEY=${!!supabaseAnonKey}`;
@@ -25,7 +23,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Types for our database tables
 export interface User {
   id: string;
   email: string;

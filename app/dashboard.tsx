@@ -9,6 +9,7 @@ import {
   Linking,
   Platform,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -23,7 +24,7 @@ import {
   TrendingUp,
   Trash2,
   MessageSquare,
-  TestTube,
+  BookOpen,
 } from "lucide-react-native";
 import { useAuth } from "@/contexts/auth-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -33,8 +34,8 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [signOutLoading, setSignOutLoading] = useState(false);
   const [quizHistory, setQuizHistory] = useState<any[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const { user, logout, deleteAccount, isLoading } = useAuth();
 
   useEffect(() => {
@@ -58,8 +59,6 @@ export default function DashboardPage() {
       } catch (error) {
         console.error("Error:", error);
         Alert.alert("Error", "Failed to load quiz history");
-      } finally {
-        setIsLoadingHistory(false);
       }
     }
 
@@ -67,7 +66,6 @@ export default function DashboardPage() {
   }, [user?.id]);
 
   useEffect(() => {
-    // Only redirect if we're not loading and there's no user
     if (!isLoading && !user) {
       router.replace("/");
     }
@@ -85,8 +83,13 @@ export default function DashboardPage() {
           text: "Sign Out",
           style: "destructive",
           onPress: async () => {
-            await logout();
-            router.replace("/");
+            try {
+              setSignOutLoading(true);
+              await logout();
+              router.replace("/");
+            } finally {
+              setSignOutLoading(false);
+            }
           },
         },
       ]);
@@ -95,8 +98,13 @@ export default function DashboardPage() {
 
   const confirmLogout = async () => {
     setShowLogoutModal(false);
-    await logout();
-    router.replace("/");
+    try {
+      setSignOutLoading(true);
+      await logout();
+      router.replace("/");
+    } finally {
+      setSignOutLoading(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -112,18 +120,24 @@ export default function DashboardPage() {
             text: "Delete",
             style: "destructive",
             onPress: async () => {
-              const result = await deleteAccount();
-              if (result.success) {
-                Alert.alert(
-                  "Account Deleted",
-                  "Your account and all data have been permanently deleted."
-                );
-                router.replace("/");
-              } else {
-                Alert.alert(
-                  "Error",
-                  result.error || "Failed to delete account. Please try again."
-                );
+              try {
+                setSignOutLoading(true);
+                const result = await deleteAccount();
+                if (result.success) {
+                  Alert.alert(
+                    "Account Deleted",
+                    "Your account and all data have been permanently deleted."
+                  );
+                  router.replace("/");
+                } else {
+                  Alert.alert(
+                    "Error",
+                    result.error ||
+                      "Failed to delete account. Please try again."
+                  );
+                }
+              } finally {
+                setSignOutLoading(false);
               }
             },
           },
@@ -134,9 +148,14 @@ export default function DashboardPage() {
 
   const confirmDeleteAccount = async () => {
     setShowDeleteModal(false);
-    const result = await deleteAccount();
-    if (result.success) {
-      router.replace("/");
+    try {
+      setSignOutLoading(true);
+      const result = await deleteAccount();
+      if (result.success) {
+        router.replace("/");
+      }
+    } finally {
+      setSignOutLoading(false);
     }
   };
 
@@ -144,7 +163,7 @@ export default function DashboardPage() {
     const message = encodeURIComponent(
       "Hi! I'd like to try EZCare AI on WhatsApp."
     );
-    const url = `https://wa.me/1234567890?text=${message}`;
+    const url = `https://wa.me/15558536758?text=${message}`;
     Linking.openURL(url).catch(() => {
       console.log("Could not open WhatsApp");
     });
@@ -156,25 +175,22 @@ export default function DashboardPage() {
     return "#EF4444";
   };
 
-  // Show loading state while auth is loading
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <ActivityIndicator size="large" color="#ffffff" />
         </View>
       </SafeAreaView>
     );
   }
 
-  // If not loading and no user, return null (redirect will happen in useEffect)
   if (!user) {
     return null;
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setSidebarOpen(true)}>
           <Menu size={24} color="#1F2937" />
@@ -190,7 +206,6 @@ export default function DashboardPage() {
         style={styles.mainContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Health Score Card */}
         {latestQuizResult && (
           <View style={styles.healthScoreCard}>
             <LinearGradient
@@ -218,7 +233,6 @@ export default function DashboardPage() {
           </View>
         )}
 
-        {/* Quiz History Chart */}
         {quizHistory.length > 1 && (
           <View style={styles.historyCard}>
             <View style={styles.historyHeader}>
@@ -246,7 +260,6 @@ export default function DashboardPage() {
           </View>
         )}
 
-        {/* Quick Actions */}
         <View style={styles.actionsCard}>
           <Text style={styles.actionsTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
@@ -265,18 +278,8 @@ export default function DashboardPage() {
               <MessageSquare size={24} color="#10B981" />
               <Text style={styles.actionButtonText}>Chat with Ez</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push("/backend-test")}
-            >
-              <TestTube size={24} color="#3B82F6" />
-              <Text style={styles.actionButtonText}>Backend Test</Text>
-            </TouchableOpacity>
           </View>
         </View>
-
-        {/* WhatsApp CTA */}
         <View style={styles.whatsappCard}>
           <Text style={styles.whatsappTitle}>Try Ez on WhatsApp</Text>
           <Text style={styles.whatsappText}>
@@ -290,13 +293,9 @@ export default function DashboardPage() {
             <MessageSquare size={20} color="#fff" />
             <Text style={styles.whatsappButtonText}>Chat on WhatsApp</Text>
           </TouchableOpacity>
-          <Text style={styles.whatsappNote}>
-            Coming soon - placeholder for now
-          </Text>
         </View>
       </ScrollView>
 
-      {/* Sidebar */}
       {sidebarOpen && (
         <View style={styles.sidebarOverlay}>
           <TouchableOpacity
@@ -359,7 +358,16 @@ export default function DashboardPage() {
                 <Trash2 size={20} color="#EF4444" />
                 <Text style={styles.deleteAccountText}>Delete Account</Text>
               </TouchableOpacity>
-
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setSidebarOpen(false);
+                  router.push("/MedicalSourcesPage");
+                }}
+              >
+                <BookOpen size={20} color="#6B7280" />
+                <Text style={styles.menuText}>Medical Sources</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
@@ -375,7 +383,6 @@ export default function DashboardPage() {
         </View>
       )}
 
-      {/* Logout Modal */}
       <Modal
         visible={showLogoutModal}
         transparent
@@ -406,7 +413,6 @@ export default function DashboardPage() {
         </View>
       </Modal>
 
-      {/* Delete Account Modal */}
       <Modal
         visible={showDeleteModal}
         transparent
@@ -437,6 +443,11 @@ export default function DashboardPage() {
           </View>
         </View>
       </Modal>
+      {signOutLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#ffffff" />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -576,6 +587,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: "#E5E7EB",
+    justifyContent: "center",
   },
   actionButtonText: {
     fontSize: 14,
@@ -812,13 +824,14 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   loadingContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  loadingText: {
-    fontSize: 16,
-    color: "#6B7280",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   modalOverlay: {
     flex: 1,

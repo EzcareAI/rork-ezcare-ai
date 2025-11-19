@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,6 +25,11 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [termsError, setTermsError] = useState("");
 
   const { signup } = useAuth();
 
@@ -46,40 +53,68 @@ export default function SignupPage() {
   };
 
   const handleSignup = async () => {
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
+    setNameError("");
+    setEmailError("");
+    setPasswordError("");
+    setConfirmPasswordError("");
+    setTermsError("");
+
+    let hasError = false;
+
+    if (!name) {
+      setNameError("Name is required");
+      hasError = true;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
+    if (!email) {
+      setEmailError("Email is required");
+      hasError = true;
     }
 
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      Alert.alert("Password Requirements", passwordError);
-      return;
+    if (!password) {
+      setPasswordError("Password is required");
+      hasError = true;
+    }
+
+    if (!confirmPassword) {
+      setConfirmPasswordError("Please confirm your password");
+      hasError = true;
+    }
+
+    if (password !== confirmPassword && confirmPassword.length > 0) {
+      setConfirmPasswordError("Passwords do not match");
+      hasError = true;
+    }
+
+    const pwdValidationError = validatePassword(password);
+    if (pwdValidationError) {
+      setPasswordError(pwdValidationError);
+      hasError = true;
     }
 
     if (!agreeToTerms) {
-      Alert.alert(
-        "Error",
-        "Please agree to the Privacy Policy and Terms of Service"
-      );
+      setTermsError("Please agree to the Privacy Policy and Terms of Service");
+      hasError = true;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address format");
+      hasError = true;
+    }
+
+    if (hasError) {
       return;
     }
 
     setIsLoading(true);
     const result = await signup(email, password, name);
-    console.log("Signup result:", result.success, result.error);
     setIsLoading(false);
 
     if (result.success) {
-      // Redirect to quiz immediately after successful signup
       setTimeout(() => {
         router.replace("/quiz");
-      }, 500); // Small delay to ensure auth state is updated
+      }, 500);
     } else {
       Alert.alert("Error", result.error || "Signup failed");
     }
@@ -87,150 +122,218 @@ export default function SignupPage() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sign Up</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        {/* Hero */}
-        <LinearGradient
-          colors={["#4F46E5", "#06B6D4", "#10B981"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1 }}
         >
-          <Text style={styles.heroTitle}>Join EZCare AI</Text>
-          <Text style={styles.heroSubtitle}>
-            Start your health journey with Ez, your AI health buddy
-          </Text>
-        </LinearGradient>
-
-        {/* Form */}
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
-            <View style={styles.inputContainer}>
-              <Mail size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your full name"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                autoComplete="name"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <View style={styles.inputContainer}>
-              <Mail size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputContainer}>
-              <Lock size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Create a password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoComplete="new-password"
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Confirm Password</Text>
-            <View style={styles.inputContainer}>
-              <Lock size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                autoComplete="new-password"
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Terms Checkbox */}
-          <TouchableOpacity
-            style={styles.checkboxContainer}
-            onPress={() => setAgreeToTerms(!agreeToTerms)}
-          >
-            <View
-              style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}
-            >
-              {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxText}>
-              I agree to the{" "}
-              <Text style={styles.link} onPress={() => router.push("/privacy")}>
-                Privacy Policy
-              </Text>{" "}
-              and{" "}
-              <Text style={styles.link} onPress={() => router.push("/terms")}>
-                Terms of Service
-              </Text>
-            </Text>
-          </TouchableOpacity>
-
-          {/* Sign Up Button */}
-          <TouchableOpacity
-            style={[styles.signupButton, isLoading && styles.buttonDisabled]}
-            onPress={handleSignup}
-            disabled={isLoading}
-          >
-            <Text style={styles.signupButtonText}>
-              {isLoading ? "Creating Account..." : "Create Account"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Login Link */}
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/login")}>
-              <Text style={styles.loginLink}>Sign In</Text>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <ArrowLeft size={24} color="#1F2937" />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>Sign Up</Text>
+            <View style={styles.headerSpacer} />
           </View>
-        </View>
-      </ScrollView>
+
+          <LinearGradient
+            colors={["#4F46E5", "#06B6D4", "#10B981"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.hero}
+          >
+            <Text style={styles.heroTitle}>Join EZCare AI</Text>
+            <Text style={styles.heroSubtitle}>
+              Start your health journey with Ez, your AI health buddy
+            </Text>
+          </LinearGradient>
+
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <View
+                style={[styles.inputContainer, nameError && styles.inputError]}
+              >
+                <Mail size={20} color="#6B7280" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    setNameError("");
+                  }}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  placeholderTextColor="#6B7280"
+                />
+              </View>
+              {nameError ? (
+                <Text style={styles.errorText}>{nameError}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <View
+                style={[styles.inputContainer, emailError && styles.inputError]}
+              >
+                <Mail size={20} color="#6B7280" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setEmailError("");
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  placeholderTextColor="#6B7280"
+                />
+              </View>
+              {emailError ? (
+                <Text style={styles.errorText}>{emailError}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  passwordError && styles.inputError,
+                ]}
+              >
+                <Lock size={20} color="#6B7280" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Create a password"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setPasswordError("");
+                  }}
+                  secureTextEntry={!showPassword}
+                  autoComplete="new-password"
+                  placeholderTextColor="#6B7280"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color="#6B7280" />
+                  ) : (
+                    <Eye size={20} color="#6B7280" />
+                  )}
+                </TouchableOpacity>
+              </View>
+              {passwordError ? (
+                <Text style={styles.errorText}>{passwordError}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  confirmPasswordError && styles.inputError,
+                ]}
+              >
+                <Lock size={20} color="#6B7280" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    setConfirmPasswordError("");
+                  }}
+                  secureTextEntry={!showConfirmPassword}
+                  autoComplete="new-password"
+                  placeholderTextColor="#6B7280"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} color="#6B7280" />
+                  ) : (
+                    <Eye size={20} color="#6B7280" />
+                  )}
+                </TouchableOpacity>
+              </View>
+              {confirmPasswordError ? (
+                <Text style={styles.errorText}>{confirmPasswordError}</Text>
+              ) : null}
+            </View>
+
+            <View style={{ marginBottom: 24 }}>
+              <TouchableOpacity
+                style={[
+                  styles.checkboxContainer,
+                  termsError && styles.inputError,
+                ]}
+                onPress={() => {
+                  setAgreeToTerms(!agreeToTerms);
+                  setTermsError("");
+                }}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    agreeToTerms && styles.checkboxChecked,
+                    termsError && styles.inputError,
+                  ]}
+                >
+                  {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxText}>
+                  I agree to the{" "}
+                  <Text
+                    style={styles.link}
+                    onPress={() => router.push("/privacy")}
+                  >
+                    Privacy Policy
+                  </Text>{" "}
+                  and{" "}
+                  <Text
+                    style={styles.link}
+                    onPress={() => router.push("/terms")}
+                  >
+                    Terms of Service
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+              {termsError ? (
+                <Text style={styles.errorText}>{termsError}</Text>
+              ) : null}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.signupButton, isLoading && styles.buttonDisabled]}
+              onPress={handleSignup}
+              disabled={isLoading}
+            >
+              <Text style={styles.signupButtonText}>
+                {isLoading ? "Creating Account..." : "Create Account"}
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.loginContainer}>
+              <Text style={styles.loginText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.push("/login")}>
+                <Text style={styles.loginLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -239,6 +342,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  errorText: {
+    color: "#DC2626",
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  inputError: {
+    borderColor: "#DC2626",
   },
   header: {
     flexDirection: "row",
@@ -301,7 +413,6 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 24,
   },
   checkbox: {
     width: 20,

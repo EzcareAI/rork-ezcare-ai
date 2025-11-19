@@ -2,6 +2,7 @@ import createContextHook from "@nkzw/create-context-hook";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase, User } from "@/lib/supabase";
 import { Session, AuthChangeEvent } from "@supabase/supabase-js";
+import Purchases from "react-native-purchases";
 
 export interface AuthState {
   user: User | null;
@@ -29,25 +30,15 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
 
   const loadUserProfile = useCallback(async (userId: string) => {
     try {
-      if (__DEV__) {
-        console.log("Loading user profile for userId:", userId);
-      }
-
       const { data, error } = await supabase
         .from("users")
         .select("*")
         .eq("id", userId)
         .maybeSingle();
-
       if (error) {
         console.error("Error loading user profile:", error.message, error.code);
-        // If user doesn't exist, try to create it directly
         if (error.code === "PGRST116") {
-          if (__DEV__) {
-            console.log("User profile not found, attempting to create");
-          }
           try {
-            // Get the current session to get user email
             const { data: sessionData } = await supabase.auth.getSession();
             const email = sessionData.session?.user?.email || "";
 
@@ -57,12 +48,11 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
                 id: userId,
                 email,
                 name: null,
-                credits: 20,
+                credits: 10,
                 subscription_plan: "trial",
               })
               .select()
               .single();
-
             if (createError) {
               console.error("Failed to create user:", createError);
             } else if (newUser) {
@@ -81,7 +71,31 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
       }
 
       if (data) {
-        setUser(data);
+        try {
+          if (data.credits === null || typeof data.credits === "undefined") {
+            const { data: updated, error: updateError } = await supabase
+              .from("users")
+              .update({ credits: 10 })
+              .eq("id", userId)
+              .select()
+              .single();
+
+            if (updateError) {
+              console.error(
+                "Failed to backfill credits for user:",
+                updateError
+              );
+              setUser(data);
+            } else {
+              setUser(data);
+            }
+          } else {
+            setUser(data);
+          }
+        } catch (patchErr) {
+          console.error("Error patching null credits:", patchErr);
+          setUser(data);
+        }
       }
     } catch (error) {
       console.error(
@@ -98,7 +112,6 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
 
     const initializeAuth = async () => {
       try {
-        // Get initial session
         const {
           data: { session },
         } = await supabase.auth.getSession();
@@ -108,6 +121,27 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
         setSession(session);
         if (session?.user) {
           await loadUserProfile(session.user.id);
+
+          try {
+            try {
+              await (Purchases as any).logIn(session.user.id);
+            } catch (inner) {
+              if ((Purchases as any).identify)
+                await (Purchases as any).identify(session.user.id);
+            }
+          } catch (e) {
+            console.warn("RevenueCat identification failed:", e);
+          }
+
+          import("@/lib/syncSubscription")
+            .then(({ syncSubscription }) =>
+              syncSubscription({ id: session.user.id }).catch((e: any) =>
+                console.warn("syncSubscription failed:", e)
+              )
+            )
+            .catch((e) =>
+              console.warn("Failed to import syncSubscription:", e)
+            );
         } else {
           setIsLoading(false);
         }
@@ -119,21 +153,16 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
       }
     };
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
         if (!isMounted) return;
 
-        // Use setTimeout to ensure state updates happen after render
         setTimeout(async () => {
           if (!isMounted) return;
 
           try {
-            if (__DEV__ && event && session?.user?.email) {
-              console.log("Auth state changed:", event, session.user.email);
-            }
             setSession(session);
 
             if (session?.user) {
@@ -167,17 +196,19 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
       });
 
       if (error) {
-        setIsLoading(false);
+        if (error.message.includes("Invalid login credentials")) {
+          return {
+            success: false,
+            error: "Email not found or incorrect password",
+          };
+        }
         return { success: false, error: error.message };
       }
 
-      if (data.user) {
-        // Don't set loading to false here - let the auth state change handler do it
-        // This prevents the brief moment where user is null
+      if (data?.user) {
         return { success: true };
       }
 
-      setIsLoading(false);
       return { success: false, error: "Login failed" };
     } catch (error) {
       console.error("Login error:", error);
@@ -193,7 +224,7 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
           email,
           password,
           options: {
-            data: { name },
+            data: { name: name?.trim() || null },
             emailRedirectTo: `${
               process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") ||
               (typeof window !== "undefined"
@@ -203,46 +234,19 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
           },
         });
 
-        console.log("Signup response data:", data);
-        console.log("Signup response error:", error);
         if (error) {
           return { success: false, error: error.message };
         }
 
         if (data.user) {
-          // Create user profile immediately via direct Supabase
           try {
-            const { error: insertError } = await supabase.from("users").insert({
-              id: data.user.id,
-              email: data.user.email || email,
-              name: name || null,
-              credits: 20,
-              subscription_plan: "trial",
-            });
-
-            if (insertError) {
-              console.error("Failed to create user profile:", insertError);
-              // Continue anyway, the auth trigger might handle it
-            } else if (__DEV__) {
-              console.log("User profile created successfully");
-            }
-
-            // If email confirmation is disabled, user is immediately confirmed
-            if (
-              data.user.email_confirmed_at ||
-              !data.user.confirmation_sent_at
-            ) {
-              // User is confirmed, load their profile
-              await loadUserProfile(data.user.id);
-            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await loadUserProfile(data.user.id);
           } catch (apiError) {
-            if (__DEV__) {
-              console.log(
-                "User profile creation failed:",
-                apiError instanceof Error ? apiError.message : "Unknown error"
-              );
-            }
-            // Continue anyway, the auth trigger might handle it
+            console.log(
+              "User profile creation failed:",
+              apiError instanceof Error ? apiError.message : "Unknown error"
+            );
           }
 
           return { success: true };
@@ -299,12 +303,14 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
       if (user) {
         try {
           const credits =
-            plan === "starter"
-              ? 200
+            plan === "trial"
+              ? 10
+              : plan === "starter"
+              ? 50
               : plan === "pro"
-              ? 1000
+              ? 300
               : plan === "premium"
-              ? 999999
+              ? "∞"
               : user.credits;
 
           const { data, error } = await supabase
@@ -334,38 +340,41 @@ export const [AuthProvider, useAuth] = createContextHook((): AuthState => {
   );
 
   const deleteAccount = useCallback(async () => {
-    if (!user) {
+    if (!user || !session) {
       return { success: false, error: "No user logged in" };
     }
 
     try {
-      // Delete user data directly via Supabase
-      // First delete related data (quiz responses, chats, subscriptions)
-      await supabase.from("quiz_responses").delete().eq("user_id", user.id);
-      await supabase.from("chats").delete().eq("user_id", user.id);
-      await supabase.from("subscriptions").delete().eq("user_id", user.id);
-
-      // Then delete the user profile
-      const { error } = await supabase.from("users").delete().eq("id", user.id);
+      const { data, error } = await supabase.functions.invoke(
+        "delete-account",
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
 
       if (error) {
-        console.error("Failed to delete user data:", error);
+        console.error("Failed to delete account:", error);
         return {
           success: false,
-          error: "Failed to delete account data",
+          error: error.message || "Failed to delete account",
         };
       }
 
-      // Sign out the user
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
       return { success: true };
     } catch (error) {
       console.error("Delete account error:", error);
-      return { success: false, error: "Failed to delete account" };
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to delete account",
+      };
     }
-  }, [user]);
+  }, [user, session]);
 
   return useMemo(
     () => ({

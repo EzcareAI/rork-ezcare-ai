@@ -1,28 +1,66 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { ArrowLeft, Mail } from 'lucide-react-native';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Platform,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { supabase } from "@/lib/supabase";
+import { ArrowLeft, Mail } from "lucide-react-native";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
   const handleResetPassword = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
+      Alert.alert("Error", "Please enter your email address");
       return;
     }
+    try {
+      setIsLoading(true);
+      const isWeb = Platform.OS === "web";
 
-    setIsLoading(true);
-    
-    // Mock password reset - in real app, this would call Supabase
-    setTimeout(() => {
-      setIsLoading(false);
+      const origin =
+        typeof window !== "undefined" && window.location?.origin
+          ? window.location.origin
+          : process.env.EXPO_PUBLIC_API_URL || undefined;
+
+      const webRedirect = origin
+        ? `${String(origin).replace(/\/+$/, "")}/reset-password`
+        : undefined;
+
+      const redirectTo = isWeb ? webRedirect : "myapp://reset-password";
+
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+
+      if (error) {
+        console.error("Password reset error:", error);
+        Alert.alert("Error", error.message || "Failed to send reset email");
+        setIsLoading(false);
+        return;
+      }
+
       setEmailSent(true);
-    }, 2000);
+    } catch (err) {
+      console.error("Unexpected error sending reset email:", err);
+      Alert.alert(
+        "Error",
+        err instanceof Error ? err.message : "Unexpected error"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (emailSent) {
@@ -38,22 +76,23 @@ export default function ForgotPasswordPage() {
 
         <View style={styles.successContainer}>
           <LinearGradient
-            colors={['#4F46E5', '#06B6D4', '#10B981']}
+            colors={["#4F46E5", "#06B6D4", "#10B981"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.successIcon}
           >
             <Text style={styles.successIconText}>✓</Text>
           </LinearGradient>
-          
+
           <Text style={styles.successTitle}>Check Your Email</Text>
           <Text style={styles.successText}>
-            We've sent a password reset link to {email}. Please check your inbox and follow the instructions.
+            We've sent a password reset link to {email}. Please check your inbox
+            and follow the instructions.
           </Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.push('/login')}
+            onPress={() => router.push("/login")}
           >
             <Text style={styles.backButtonText}>Back to Sign In</Text>
           </TouchableOpacity>
@@ -65,7 +104,6 @@ export default function ForgotPasswordPage() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <ArrowLeft size={24} color="#1F2937" />
@@ -74,9 +112,8 @@ export default function ForgotPasswordPage() {
           <View style={{ width: 24 }} />
         </View>
 
-        {/* Hero */}
         <LinearGradient
-          colors={['#4F46E5', '#06B6D4', '#10B981']}
+          colors={["#4F46E5", "#06B6D4", "#10B981"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -87,7 +124,6 @@ export default function ForgotPasswordPage() {
           </Text>
         </LinearGradient>
 
-        {/* Form */}
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email Address</Text>
@@ -101,25 +137,24 @@ export default function ForgotPasswordPage() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
+                placeholderTextColor="#6B7280"
               />
             </View>
           </View>
 
-          {/* Reset Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.resetButton, isLoading && styles.buttonDisabled]}
             onPress={handleResetPassword}
             disabled={isLoading}
           >
             <Text style={styles.resetButtonText}>
-              {isLoading ? 'Sending Reset Link...' : 'Send Reset Link'}
+              {isLoading ? "Sending Reset Link..." : "Send Reset Link"}
             </Text>
           </TouchableOpacity>
 
-          {/* Back to Login */}
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Remember your password? </Text>
-            <TouchableOpacity onPress={() => router.push('/login')}>
+            <TouchableOpacity onPress={() => router.push("/login")}>
               <Text style={styles.loginLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
@@ -132,37 +167,37 @@ export default function ForgotPasswordPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
   },
   hero: {
     marginHorizontal: 20,
     padding: 32,
     borderRadius: 20,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
   },
   heroTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 8,
   },
   heroSubtitle: {
     fontSize: 16,
-    color: '#E5E7EB',
-    textAlign: 'center',
+    color: "#E5E7EB",
+    textAlign: "center",
   },
   form: {
     paddingHorizontal: 20,
@@ -172,96 +207,96 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 8,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: "#1F2937",
     marginLeft: 12,
   },
   resetButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   resetButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loginText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   loginLink: {
     fontSize: 14,
-    color: '#10B981',
-    fontWeight: '600',
+    color: "#10B981",
+    fontWeight: "600",
   },
   successContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 20,
   },
   successIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 24,
   },
   successIconText: {
     fontSize: 32,
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 16,
   },
   successText: {
     fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     lineHeight: 24,
     marginBottom: 32,
   },
   backButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderRadius: 12,
   },
   backButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

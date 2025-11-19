@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,15 +6,15 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { ArrowLeft, Check, Zap, Star, Crown } from "lucide-react-native";
 import { useAuth } from "@/contexts/auth-context";
-import * as WebBrowser from "expo-web-browser";
-import { supabase } from "@/lib/supabase";
+import Purchases from "react-native-purchases";
+import PRODUCTS from "@/config/products";
 
 interface PricingPlan {
   id: string;
@@ -32,9 +32,9 @@ const plans: PricingPlan[] = [
     id: "free",
     name: "Free",
     price: "$0",
-    credits: "20 credits/week",
+    credits: "10 credits/week",
     features: [
-      "20 credits per week (auto-renew)",
+      "10 credits per week (auto-renew)",
       "Basic health guidance",
       "Symptom explanations",
       "GPT-4o-mini AI model",
@@ -51,7 +51,7 @@ const plans: PricingPlan[] = [
       "50 questions per month",
       "Advanced health insights",
       "Personalized wellness tips",
-      "GPT-4o AI model",
+      "GPT-5 AI model",
       "Email support",
     ],
     icon: Zap,
@@ -60,13 +60,13 @@ const plans: PricingPlan[] = [
   {
     id: "pro",
     name: "Pro",
-    price: "$49",
-    credits: "200 questions/month",
+    price: "$39",
+    credits: "300 questions/month",
     features: [
-      "200 questions per month",
+      "300 questions per month",
       "Premium health analysis",
       "Custom wellness plans",
-      "GPT-4o AI model",
+      "GPT-5 AI model",
       "Priority support",
       "Health tracking",
     ],
@@ -77,13 +77,13 @@ const plans: PricingPlan[] = [
   {
     id: "premium",
     name: "Premium",
-    price: "$99",
-    credits: "Unlimited",
+    price: "$79",
+    credits: "Unlimited questions/month",
     features: [
-      "Unlimited questions",
+      "Unlimited questions/month",
       "Premium health analysis",
       "Custom wellness plans",
-      "GPT-4o AI model",
+      "GPT-5 AI model",
       "24/7 priority support",
       "Advanced health tracking",
       "Exclusive content",
@@ -95,110 +95,220 @@ const plans: PricingPlan[] = [
 
 export default function PricingPage() {
   const { user, updateSubscription } = useAuth();
+  const [offerings, setOfferings] = useState<any | null>(null);
+  const [loadingOfferings, setLoadingOfferings] = useState(false);
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  const [switchingToFree, setSwitchingToFree] = useState(false);
 
-  const [isCreatingCheckout, setIsCreatingCheckout] = React.useState(false);
-
-  const handleCheckout = async (plan: "starter" | "pro" | "premium") => {
-    if (!user) {
-      console.log("No user found, please sign in");
-      Alert.alert("Error", "Please sign in to continue");
-      return;
-    }
-
-    setIsCreatingCheckout(true);
+  const fetchOfferings = async () => {
     try {
-      console.log("Creating checkout session for plan:", plan);
-      console.log("User details:", { id: user.id, email: user.email });
-
-      console.log("Invoking create-checkout-session function...");
-      
-      const { data: result, error } = await supabase.functions.invoke(
-        "create-checkout-session",
-        {
-          body: {
-            plan,
-            userId: user.id,
-            email: user.email,
-          },
-        }
-      );
-
-      console.log("Function response:", { result, error });
-
-      if (error) {
-        console.error("Function error details:", {
-          message: error.message,
-          name: error.name,
-          status: error.status,
-          stack: error.stack,
-        });
-        throw error;
-      }
-
-      if (!result) {
-        throw new Error("No result returned from checkout function");
-      }
-
-      console.log("Checkout session result:", result);
-
-      if (result?.url) {
-        if (Platform.OS === "web") {
-          // On web, redirect to Stripe checkout
-          window.location.href = result.url;
-        } else {
-          // On mobile, open in browser
-          await WebBrowser.openBrowserAsync(result.url);
-        }
-      } else {
-        console.error("Checkout error: No URL returned");
-        Alert.alert("Checkout Error", "Failed to create checkout session");
-      }
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-
-      let errorMessage = "Failed to process subscription. Please try again.";
-
-      if (error instanceof Error) {
-        if (error.message.includes("Network error")) {
-          errorMessage =
-            "Network error. Please check your internet connection and try again.";
-        } else if (error.message.includes("timeout")) {
-          errorMessage =
-            "Request timeout. The server may be busy. Please try again.";
-        } else if (error.message.includes("Failed to fetch")) {
-          errorMessage = "Unable to connect to server. Please try again later.";
-        } else {
-          errorMessage = `Error: ${error.message}`;
-        }
-      }
-
-      Alert.alert("Subscription Error", errorMessage);
+      setLoadingOfferings(true);
+      const offs = await Purchases.getOfferings();
+      setOfferings(offs ?? null);
+    } catch (err) {
+      console.error("Failed to fetch offerings", err);
+      setOfferings(null);
+    } finally {
+      setLoadingOfferings(false);
     }
   };
 
-  const handleSubscribe = async (planId: string) => {
+  const getPlanKeyFromValue = (val?: string | null) => {
+    if (!val) return undefined;
+    const v = String(val).toLowerCase();
+    if (v === "trial") return "free";
+
+    const base = v.split(":")[0];
+
+    if (Object.keys(PRODUCTS).includes(base)) return base;
+    for (const key of Object.keys(PRODUCTS)) {
+      const m = PRODUCTS[key].monthly?.toLowerCase();
+      const y = PRODUCTS[key].yearly?.toLowerCase();
+      if (m && (m === v || m === base)) return key;
+      if (y && (y === v || y === base)) return key;
+    }
+
+    return undefined;
+  };
+
+  const currentPlanKey = getPlanKeyFromValue(user?.subscription_plan);
+
+  const isPlanDisabled = (planKey: string) => {
+    if (!user?.subscription_plan || user.subscription_plan === "trial")
+      return false;
+
+    const planRank = {
+      free: 0,
+      starter: 1,
+      pro: 2,
+      premium: 3,
+    };
+
+    const currentRank =
+      planRank[user.subscription_plan as keyof typeof planRank] || 0;
+    const targetRank = planRank[planKey as keyof typeof planRank] || 0;
+
+    return targetRank < currentRank;
+  };
+
+  const handleSwitchToFree = async () => {
+    if (!user) {
+      Alert.alert("Please sign in to change plans");
+      return;
+    }
+
+    try {
+      setSwitchingToFree(true);
+      await updateSubscription("free");
+      Alert.alert("Plan Updated", "You are now on the Free plan.", [
+        { text: "OK", onPress: () => router.push("/dashboard") },
+      ]);
+    } catch (err) {
+      console.error("Failed to switch to Free:", err);
+      Alert.alert("Update Failed", "Could not switch to Free plan.");
+    } finally {
+      setSwitchingToFree(false);
+    }
+  };
+
+  const handlePurchasePackage = async (pkg: any) => {
     if (!user) {
       Alert.alert("Please sign in to subscribe");
       return;
     }
 
-    if (planId === "free") {
-      // Free plan - just update locally
-      updateSubscription("trial");
-      Alert.alert("Success!", "You are now on the free plan!", [
-        { text: "OK", onPress: () => router.push("/dashboard") },
-      ]);
+    const productId = pkg.product.identifier;
+    const baseProductId = productId.split(":")[0];
+
+    const planKey = Object.keys(PRODUCTS).find(
+      (key) =>
+        PRODUCTS[key].monthly === baseProductId ||
+        PRODUCTS[key].yearly === baseProductId
+    ) as keyof typeof PRODUCTS;
+
+    if (!planKey) {
+      Alert.alert("Error", "Invalid subscription plan");
       return;
     }
 
-    // Call the checkout function for paid plans
-    await handleCheckout(planId as "starter" | "pro" | "premium");
+    if (user.subscription_plan === "trial") {
+      await Purchases.invalidateCustomerInfoCache();
+    }
+
+    try {
+      setPurchasingId(pkg.identifier);
+      try {
+        await Purchases.invalidateCustomerInfoCache();
+      } catch {}
+      try {
+        const info: any = await Purchases.getCustomerInfo();
+        const activeSubs: string[] = info?.activeSubscriptions || [];
+        const normalize = (id?: string) => String(id || "").split(":")[0];
+        const activeBaseIds = new Set(activeSubs.map((id) => normalize(id)));
+        if (activeBaseIds.has(baseProductId)) {
+          try {
+            await updateSubscription(planKey as any);
+          } catch (err) {
+            console.error(
+              "Failed to update subscription from active check:",
+              err
+            );
+            Alert.alert("Error", "Failed to update your subscription plan");
+            return;
+          }
+
+          const mod = await import("@/lib/syncSubscription");
+          await mod.syncSubscription({ id: user.id });
+
+          Alert.alert(
+            "Already Active",
+            `Your ${planKey} plan is still active with the store. No new purchase was made.`,
+            [{ text: "OK", onPress: () => router.push("/dashboard") }]
+          );
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to check active subscriptions:", e);
+      }
+      try {
+        await Purchases.purchasePackage(pkg);
+      } catch (purchaseError: any) {
+        const errText = String(
+          purchaseError.message ||
+            purchaseError.error ||
+            purchaseError.toString()
+        ).toLowerCase();
+
+        const alreadyOwned =
+          /already active|already owned|item_already_owned|product already purchased|productalreadypurchasederror/.test(
+            errText
+          ) ||
+          purchaseError.code === "ProductAlreadyPurchasedError" ||
+          purchaseError.code === "ITEM_ALREADY_OWNED" ||
+          purchaseError.code === "ProductAlreadyPurchased";
+
+        if (alreadyOwned) {
+          console.log("Product already active, updating DB and syncing...");
+
+          try {
+            await updateSubscription(planKey as any);
+          } catch (err) {
+            console.error(
+              "Failed to update subscription after already-owned:",
+              err
+            );
+            Alert.alert("Error", "Failed to update your subscription plan");
+            return;
+          }
+
+          const mod = await import("@/lib/syncSubscription");
+          await mod.syncSubscription({ id: user.id });
+
+          Alert.alert(
+            "Already Active",
+            `Your ${planKey} plan is still active with the store. No new purchase was made.`,
+            [{ text: "OK", onPress: () => router.push("/dashboard") }]
+          );
+          return;
+        }
+
+        throw purchaseError;
+      }
+
+      try {
+        await updateSubscription(planKey as any);
+      } catch (err) {
+        console.error("Failed to update subscription after purchase:", err);
+        Alert.alert(
+          "Error",
+          "Subscription updated but failed to save to database"
+        );
+        return;
+      }
+
+      const mod = await import("@/lib/syncSubscription");
+      await mod.syncSubscription({ id: user.id });
+
+      Alert.alert("Success", `You are now subscribed to the ${planKey} plan!`, [
+        { text: "OK", onPress: () => router.push("/dashboard") },
+      ]);
+    } catch (error: any) {
+      if (!error.userCancelled) {
+        console.error("Purchase failed:", error);
+        Alert.alert("Purchase Failed", error.message || "Something went wrong");
+      }
+    } finally {
+      setPurchasingId(null);
+    }
   };
+
+  useEffect(() => {
+    fetchOfferings();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <ArrowLeft size={24} color="#1F2937" />
@@ -207,7 +317,6 @@ export default function PricingPage() {
           <View style={styles.headerSpacer} />
         </View>
 
-        {/* Hero */}
         <LinearGradient
           colors={["#4F46E5", "#06B6D4", "#10B981"]}
           start={{ x: 0, y: 0 }}
@@ -219,89 +328,268 @@ export default function PricingPage() {
             Get unlimited access to Ez, your AI health buddy
           </Text>
         </LinearGradient>
-
-        {/* Pricing Cards */}
         <View style={styles.pricingContainer}>
-          {plans.map((plan) => {
-            const IconComponent = plan.icon;
-            const isCurrentPlan =
-              user?.subscription_plan === plan.id ||
-              (plan.id === "free" && user?.subscription_plan === "trial");
+          {(() => {
+            const freeMeta = PRODUCTS.free;
+            const freeStatic = plans.find((p) => p.id === "free");
+            const FreeIcon = freeStatic?.icon || Zap;
+            const freeBg = freeStatic?.color
+              ? freeStatic.color + "20"
+              : "#E5E7EB";
+
+            const isCurrentFree = currentPlanKey === "free";
 
             return (
               <View
-                key={plan.id}
                 style={[
                   styles.pricingCard,
-                  plan.popular && styles.popularCard,
-                  isCurrentPlan && styles.currentPlanCard,
+                  freeStatic?.popular && styles.popularCard,
+                  isCurrentFree && styles.currentPlanCard,
                 ]}
+                key="free"
               >
-                {plan.popular && (
-                  <View style={styles.popularBadge}>
-                    <Text style={styles.popularText}>Most Popular</Text>
-                  </View>
-                )}
-
-                {isCurrentPlan && (
+                {isCurrentFree && (
                   <View style={styles.currentBadge}>
                     <Text style={styles.currentText}>Current Plan</Text>
                   </View>
                 )}
-
                 <View style={styles.cardHeader}>
                   <View
-                    style={[
-                      styles.iconContainer,
-                      { backgroundColor: plan.color + "20" },
-                    ]}
+                    style={[styles.iconContainer, { backgroundColor: freeBg }]}
                   >
-                    <IconComponent size={24} color={plan.color} />
+                    <FreeIcon
+                      size={24}
+                      color={freeStatic?.color || "#6B7280"}
+                    />
                   </View>
-                  <Text style={styles.planName}>{plan.name}</Text>
+                  <Text style={styles.planName}>
+                    {freeMeta?.displayName || "Free"}
+                  </Text>
                 </View>
 
                 <View style={styles.priceContainer}>
-                  <Text style={styles.price}>{plan.price}</Text>
+                  <Text style={styles.price}>0</Text>
                   <Text style={styles.period}>/month</Text>
                 </View>
-
-                <Text style={styles.credits}>{plan.credits}</Text>
-
+                <Text style={styles.credits}>{freeMeta.credits}</Text>
                 <View style={styles.features}>
-                  {plan.features.map((feature, index) => (
-                    <View key={index} style={styles.feature}>
+                  {(freeMeta?.features || []).map((f: string, i: number) => (
+                    <View key={i} style={styles.feature}>
                       <Check size={16} color="#10B981" />
-                      <Text style={styles.featureText}>{feature}</Text>
+                      <Text style={styles.featureText}>{f}</Text>
                     </View>
                   ))}
                 </View>
 
-                <TouchableOpacity
-                  style={[
-                    styles.subscribeButton,
-                    plan.popular && styles.popularButton,
-                    isCurrentPlan && styles.currentPlanButton,
-                  ]}
-                  onPress={() => handleSubscribe(plan.id)}
-                  disabled={isCurrentPlan}
-                >
-                  <Text
-                    style={[
-                      styles.subscribeText,
-                      plan.popular && styles.popularButtonText,
-                      isCurrentPlan && styles.currentPlanButtonText,
-                    ]}
+                {isCurrentFree ? (
+                  <TouchableOpacity
+                    style={[styles.subscribeButton, styles.currentPlanButton]}
+                    disabled
                   >
-                    {isCurrentPlan ? "Current Plan" : "Subscribe"}
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[
+                        styles.subscribeText,
+                        styles.currentPlanButtonText,
+                      ]}
+                    >
+                      Current Plan
+                    </Text>
+                  </TouchableOpacity>
+                ) : user?.subscription_plan &&
+                  user.subscription_plan !== "trial" ? (
+                  <TouchableOpacity
+                    style={[styles.subscribeButton, styles.currentPlanButton]}
+                    disabled
+                  >
+                    <Text
+                      style={[
+                        styles.subscribeText,
+                        styles.currentPlanButtonText,
+                      ]}
+                    >
+                      Subscribe
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      styles.subscribeButton,
+                      switchingToFree && styles.currentPlanButton,
+                      switchingToFree && styles.subscribeButtonDisabled,
+                    ]}
+                    onPress={handleSwitchToFree}
+                    disabled={switchingToFree}
+                  >
+                    {switchingToFree ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text style={[styles.subscribeText]}>Choose Free</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             );
-          })}
+          })()}
+          {loadingOfferings ? (
+            <Text style={{ textAlign: "center", marginVertical: 20 }}>
+              Loading plans…
+            </Text>
+          ) : offerings?.current?.availablePackages?.length > 0 ? (
+            (() => {
+              const desiredOrder = ["starter", "pro", "premium"];
+              const pkgs: any[] = offerings.current.availablePackages.slice();
+
+              const planKeyFor = (pkg: any) => {
+                const prod = pkg.product || {};
+                const rawId = prod?.identifier;
+                const baseProductId = String(rawId || "").split(":")[0];
+                return (
+                  Object.keys(PRODUCTS).find(
+                    (k) =>
+                      PRODUCTS[k].monthly === baseProductId ||
+                      PRODUCTS[k].yearly === baseProductId
+                  ) || baseProductId
+                );
+              };
+
+              pkgs.sort((a, b) => {
+                const aKey = planKeyFor(a);
+                const bKey = planKeyFor(b);
+                const aIndex = desiredOrder.indexOf(aKey);
+                const bIndex = desiredOrder.indexOf(bKey);
+                if (aIndex === -1 && bIndex === -1) return 0;
+                if (aIndex === -1) return 1;
+                if (bIndex === -1) return -1;
+                return aIndex - bIndex;
+              });
+
+              return pkgs.map((pkg: any) => {
+                const anyP: any = pkg;
+                const prod = anyP.product || {};
+                const rawTitle = prod.title;
+                const price = prod.priceString;
+                const description = prod.description || "";
+
+                const rawId = prod?.identifier;
+                const baseProductId = String(rawId).split(":")[0];
+
+                const planKey = Object.keys(PRODUCTS).find(
+                  (k) =>
+                    PRODUCTS[k].monthly === baseProductId ||
+                    PRODUCTS[k].yearly === baseProductId
+                );
+                const planMeta = planKey ? PRODUCTS[planKey] : null;
+                const title = (planMeta && planMeta.displayName) || rawTitle;
+
+                const normalizedPlanKey = getPlanKeyFromValue(
+                  user?.subscription_plan
+                );
+                const isCurrentPlan = Boolean(
+                  (planKey && planKey === normalizedPlanKey) ||
+                    normalizedPlanKey === baseProductId
+                );
+
+                const planStatic = plans.find((p) => p.id === planKey);
+                const IconComponent = planStatic?.icon || Zap;
+                const iconColor = planStatic?.color || "#6B7280";
+                const iconBg = planStatic?.color
+                  ? planStatic.color + "20"
+                  : "#E5E7EB";
+
+                return (
+                  <View
+                    key={pkg.identifier}
+                    style={[
+                      styles.pricingCard,
+                      isCurrentPlan && styles.currentPlanCard,
+                    ]}
+                  >
+                    {isCurrentPlan && (
+                      <View style={styles.currentBadge}>
+                        <Text style={styles.currentText}>Current Plan</Text>
+                      </View>
+                    )}
+                    <View style={styles.cardHeader}>
+                      <View
+                        style={[
+                          styles.iconContainer,
+                          { backgroundColor: iconBg },
+                        ]}
+                      >
+                        <IconComponent size={24} color={iconColor} />
+                      </View>
+                      <Text style={styles.planName}>{title}</Text>
+                    </View>
+
+                    <View style={styles.priceContainer}>
+                      <Text adjustsFontSizeToFit style={styles.price}>
+                        {price}
+                      </Text>
+                      <Text adjustsFontSizeToFit style={styles.period}>
+                        /month
+                      </Text>
+                    </View>
+                    {/* <Text style={styles.credits}>{description}</Text> */}
+                    {planMeta ? (
+                      <>
+                        <Text style={styles.credits}>{planMeta.credits}</Text>
+                        <View style={styles.features}>
+                          {(planMeta.features || []).map((feature, idx) => (
+                            <View key={idx} style={styles.feature}>
+                              <Check size={16} color="#10B981" />
+                              <Text style={styles.featureText}>{feature}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={styles.credits}>{description}</Text>
+                    )}
+
+                    <TouchableOpacity
+                      style={[
+                        styles.subscribeButton,
+                        (isCurrentPlan || isPlanDisabled(planKey || "")) &&
+                          styles.currentPlanButton,
+                        purchasingId === pkg.identifier &&
+                          styles.subscribeButtonDisabled,
+                      ]}
+                      onPress={() => handlePurchasePackage(pkg)}
+                      disabled={
+                        isCurrentPlan ||
+                        isPlanDisabled(planKey || "") ||
+                        purchasingId === pkg.identifier
+                      }
+                    >
+                      {purchasingId === pkg.identifier ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.subscribeText,
+                            (isCurrentPlan || isPlanDisabled(planKey || "")) &&
+                              styles.currentPlanButtonText,
+                          ]}
+                        >
+                          {isCurrentPlan
+                            ? "Current Plan"
+                            : isPlanDisabled(planKey || "")
+                            ? "Subscribe"
+                            : "Subscribe"}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              });
+            })()
+          ) : (
+            <Text style={{ textAlign: "center", marginVertical: 20 }}>
+              No plans available right now.
+            </Text>
+          )}
         </View>
 
-        {/* FAQ */}
         <View style={styles.faqSection}>
           <Text style={styles.faqTitle}>Frequently Asked Questions</Text>
 
@@ -330,13 +618,17 @@ export default function PricingPage() {
           </View>
         </View>
 
-        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             Need help choosing? Contact us at ezcareai.contact@gmail.com
           </Text>
         </View>
       </ScrollView>
+      {(switchingToFree || purchasingId !== null) && (
+        <View style={styles.fullscreenOverlay}>
+          <ActivityIndicator size="large" color="#ffffff" />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -457,7 +749,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   price: {
-    fontSize: 48,
+    fontSize: 35,
     fontWeight: "bold",
     color: "#1F2937",
   },
@@ -540,5 +832,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     textAlign: "center",
+  },
+  fullscreenOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 999,
   },
 });

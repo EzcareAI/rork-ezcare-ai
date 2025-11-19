@@ -92,7 +92,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// Simple fallback component for connection errors
 export const ConnectionErrorFallback: React.FC<{
   error?: Error;
   retry: () => void;

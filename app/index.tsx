@@ -17,7 +17,6 @@ import {
   Star,
   ArrowRight,
   CheckCircle,
-  Users,
   Clock,
   MessageCircle,
   Award,
@@ -67,12 +66,6 @@ export default function LandingPage() {
 
   const pricingPreview = [
     {
-      name: "Free",
-      price: "$0",
-      credits: "20 credits/week",
-      description: "Auto-renew weekly",
-    },
-    {
       name: "Starter",
       price: "$19",
       credits: "50 questions/month",
@@ -80,14 +73,14 @@ export default function LandingPage() {
     },
     {
       name: "Pro",
-      price: "$49",
-      credits: "200 questions/month",
+      price: "$39",
+      credits: "300 questions/month",
       description: "For regular health guidance",
     },
     {
       name: "Premium",
-      price: "$99",
-      credits: "Unlimited",
+      price: "$79",
+      credits: "Unlimited questions/month",
       description: "Complete health companion",
     },
   ];
@@ -95,7 +88,6 @@ export default function LandingPage() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.logo}>EZCare AI</Text>
           <View style={styles.headerButtons}>
@@ -111,7 +103,6 @@ export default function LandingPage() {
           </View>
         </View>
 
-        {/* Hero Section */}
         <LinearGradient
           colors={["#4F46E5", "#06B6D4", "#10B981"]}
           start={{ x: 0, y: 0 }}
@@ -131,9 +122,7 @@ export default function LandingPage() {
                 style={styles.primaryButton}
                 onPress={() => router.push("/signup")}
               >
-                <Text style={styles.primaryButtonText}>
-                  Start Free → Take Health Quiz
-                </Text>
+                <Text style={styles.primaryButtonText}>Free Health Quiz</Text>
                 <ArrowRight size={20} color="#1F2937" />
               </TouchableOpacity>
               <TouchableOpacity
@@ -146,7 +135,6 @@ export default function LandingPage() {
           </View>
         </LinearGradient>
 
-        {/* How it Works */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>How It Works</Text>
           <View style={styles.stepsContainer}>
@@ -187,7 +175,6 @@ export default function LandingPage() {
           </View>
         </View>
 
-        {/* Dashboard Preview */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Smart Health Conversations</Text>
           <View style={styles.dashboardMockup}>
@@ -213,7 +200,6 @@ export default function LandingPage() {
           </View>
         </View>
 
-        {/* Features */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Why Choose Ez?</Text>
           <View style={styles.features}>
@@ -241,7 +227,6 @@ export default function LandingPage() {
           </View>
         </View>
 
-        {/* Pricing Preview */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Simple Pricing</Text>
           <View style={styles.pricingGrid}>
@@ -262,7 +247,6 @@ export default function LandingPage() {
           </TouchableOpacity>
         </View>
 
-        {/* Health Quiz CTA */}
         <LinearGradient colors={["#F0F9FF", "#E0F2FE"]} style={styles.quizCTA}>
           <Text style={styles.quizTitle}>Start Your Health Journey</Text>
           <Text style={styles.quizText}>
@@ -277,7 +261,6 @@ export default function LandingPage() {
           </TouchableOpacity>
         </LinearGradient>
 
-        {/* Privacy & Security */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Privacy & Security</Text>
           <View style={styles.securityContainer}>
@@ -319,7 +302,6 @@ export default function LandingPage() {
           </View>
         </View>
 
-        {/* Testimonials */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What People Say</Text>
           <View style={styles.testimonials}>
@@ -339,7 +321,6 @@ export default function LandingPage() {
           </View>
         </View>
 
-        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerTitle}>EZCare AI</Text>
           <View style={styles.footerLinks}>
@@ -349,31 +330,11 @@ export default function LandingPage() {
             <TouchableOpacity onPress={() => router.push("/terms")}>
               <Text style={styles.footerLink}>Terms of Service</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/disclaimer")}>
-              <Text style={styles.footerLink}>Medical Disclaimer</Text>
-            </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push("/contact")}>
               <Text style={styles.footerLink}>Contact</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/database-test")}>
-              <Text style={styles.footerLink}>Debug API</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/simple-test")}>
-              <Text style={styles.footerLink}>Simple Test</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/deployment-test")}>
-              <Text style={styles.footerLink}>Deployment Test</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/backend-status")}>
-              <Text style={styles.footerLink}>Backend Status</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push("/backend-connectivity-test")}
-            >
-              <Text style={styles.footerLink}>Connectivity Test</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/env-test")}>
-              <Text style={styles.footerLink}>Environment Test</Text>
+            <TouchableOpacity onPress={() => router.push("/disclaimer")}>
+              <Text style={styles.footerLink}>Medical Disclaimer</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.footerText}>
@@ -668,9 +629,11 @@ const styles = StyleSheet.create({
   },
   footerLinks: {
     flexDirection: width > 400 ? "row" : "column",
-    gap: width > 400 ? 24 : 12,
+    gap: 20,
     marginBottom: 20,
     alignItems: "center",
+    flexWrap: "wrap",
+    // justifyContent: "center"
   },
   footerLink: {
     fontSize: 14,

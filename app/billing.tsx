@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,11 +20,10 @@ import {
 } from "lucide-react-native";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/supabase";
-import * as WebBrowser from "expo-web-browser";
-import { Platform } from "react-native";
 
 export default function BillingPage() {
-  const { user } = useAuth();
+  const { user, updateSubscription } = useAuth();
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const handleManageBilling = () => {
     if (user?.subscription_plan === "trial") {
@@ -58,8 +58,9 @@ export default function BillingPage() {
           text: "Cancel Subscription",
           style: "destructive",
           onPress: async () => {
+            if (!user) return;
+            setIsCancelling(true);
             try {
-              // Cancel subscription using Supabase Edge Function
               const { data: result, error } = await supabase.functions.invoke(
                 "cancel-subscription",
                 {
@@ -74,6 +75,12 @@ export default function BillingPage() {
               }
 
               if (result?.success) {
+                try {
+                  await updateSubscription("trial");
+                } catch (e) {
+                  console.warn("Failed to update local subscription state:", e);
+                }
+
                 Alert.alert(
                   "Subscription Cancelled",
                   "Your subscription has been cancelled successfully. You have been downgraded to the trial plan.",
@@ -89,6 +96,8 @@ export default function BillingPage() {
                 "Failed to cancel subscription. Please try again or contact support.",
                 [{ text: "OK" }]
               );
+            } finally {
+              setIsCancelling(false);
             }
           },
         },
@@ -103,7 +112,6 @@ export default function BillingPage() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <ArrowLeft size={24} color="#1F2937" />
@@ -112,7 +120,6 @@ export default function BillingPage() {
           <View style={styles.headerSpacer} />
         </View>
 
-        {/* Current Plan */}
         <LinearGradient
           colors={["#4F46E5", "#06B6D4", "#10B981"]}
           start={{ x: 0, y: 0 }}
@@ -131,7 +138,6 @@ export default function BillingPage() {
           </View>
         </LinearGradient>
 
-        {/* Usage Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Usage This Month</Text>
 
@@ -142,11 +148,11 @@ export default function BillingPage() {
               </View>
               <Text style={styles.statValue}>
                 {user.subscription_plan === "trial"
-                  ? "20"
+                  ? "10"
                   : user.subscription_plan === "starter"
-                  ? "200"
+                  ? "50"
                   : user.subscription_plan === "pro"
-                  ? "1000"
+                  ? "300"
                   : "∞"}
               </Text>
               <Text style={styles.statLabel}>Total Credits</Text>
@@ -158,19 +164,18 @@ export default function BillingPage() {
               </View>
               <Text style={styles.statValue}>
                 {user.subscription_plan === "trial"
-                  ? 20 - user.credits
+                  ? 10 - user.credits
                   : user.subscription_plan === "starter"
-                  ? 200 - user.credits
+                  ? 50 - user.credits
                   : user.subscription_plan === "pro"
-                  ? 1000 - user.credits
-                  : "0"}
+                  ? 300 - user.credits
+                  : ""}
               </Text>
               <Text style={styles.statLabel}>Credits Used</Text>
             </View>
           </View>
         </View>
 
-        {/* Billing Management */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Billing Management</Text>
 
@@ -193,7 +198,6 @@ export default function BillingPage() {
           </TouchableOpacity>
         </View>
 
-        {/* Upgrade Options */}
         {user.subscription_plan === "trial" && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Upgrade Your Plan</Text>
@@ -211,7 +215,6 @@ export default function BillingPage() {
           </View>
         )}
 
-        {/* Billing History */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
 
@@ -222,7 +225,7 @@ export default function BillingPage() {
               </View>
               <View style={styles.activityContent}>
                 <Text style={styles.activityTitle}>Account Created</Text>
-                <Text style={styles.activityDate}>20 trial credits added</Text>
+                <Text style={styles.activityDate}>10 trial credits added</Text>
               </View>
             </View>
 
@@ -242,7 +245,6 @@ export default function BillingPage() {
           </View>
         </View>
 
-        {/* Support */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Need Help?</Text>
           <Text style={styles.supportText}>
@@ -260,6 +262,11 @@ export default function BillingPage() {
           </View>
         </View>
       </ScrollView>
+      {isCancelling && (
+        <View style={styles.cancellingOverlay}>
+          <ActivityIndicator size="large" color="#ffffff" />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -434,5 +441,16 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 24,
+  },
+  cancellingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 999,
   },
 });
