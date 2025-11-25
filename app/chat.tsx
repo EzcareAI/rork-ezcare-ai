@@ -8,6 +8,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -17,7 +19,7 @@ import {
   Zap,
   MessageSquare,
   ExternalLink,
-  BookOpen,
+  BookOpen
 } from "lucide-react-native";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/supabase";
@@ -77,8 +79,8 @@ export default function ChatPage() {
               id: `${chat.id}-message`,
               role: "user",
               content: chat.message,
-              timestamp: new Date(chat.created_at),
-            },
+              timestamp: new Date(chat.created_at)
+            }
           ];
 
           if (chat.response) {
@@ -86,7 +88,7 @@ export default function ChatPage() {
               id: `${chat.id}-response`,
               role: "assistant",
               content: chat.response,
-              timestamp: new Date(chat.created_at),
+              timestamp: new Date(chat.created_at)
             });
           }
 
@@ -98,7 +100,7 @@ export default function ChatPage() {
             role: "assistant" as const,
             content:
               "Hi, I'm Ez 👋 Your AI health buddy! I'm here to help explain symptoms, provide wellness tips, and offer health guidance in simple terms. What can I help you with today?\n\n⚠️ **Important**: This is educational content only — not medical advice. For emergencies, call 911.",
-            timestamp: new Date(),
+            timestamp: new Date()
           });
         }
 
@@ -180,7 +182,7 @@ export default function ChatPage() {
           id: messageId,
           role: "assistant",
           content: fullText,
-          timestamp: new Date(),
+          timestamp: new Date()
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
@@ -209,7 +211,7 @@ export default function ChatPage() {
       id: Date.now().toString(),
       role: "user",
       content: inputText.trim(),
-      timestamp: new Date(),
+      timestamp: new Date()
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -246,7 +248,7 @@ export default function ChatPage() {
       const response = await fetch("https://toolkit.rork.com/text/llm/", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           model,
@@ -255,9 +257,9 @@ export default function ChatPage() {
             ...messages
               .slice(-5)
               .map((m) => ({ role: m.role, content: m.content })),
-            { role: "user", content: userMessage.content },
-          ],
-        }),
+            { role: "user", content: userMessage.content }
+          ]
+        })
       });
 
       let assistantContent =
@@ -322,7 +324,7 @@ export default function ChatPage() {
             .insert({
               user_id: user.id,
               message: userMessage.content,
-              response: assistantContent,
+              response: assistantContent
             })
             .select();
 
@@ -402,174 +404,182 @@ export default function ChatPage() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => {
-          if (autoScroll && !scrollLoading && !isStreaming && !isLoading) {
-            setScrollLoading(true);
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-            if (scrollTimeoutRef.current) {
-              clearTimeout(scrollTimeoutRef.current);
-            }
-            scrollTimeoutRef.current = setTimeout(() => {
-              setScrollLoading(false);
-              scrollTimeoutRef.current = null;
-            }, 1000);
-          } else if (isStreaming || isLoading) {
-            scrollViewRef.current?.scrollToEnd({ animated: false });
-          }
-        }}
-        onScroll={(e) => {
-          try {
-            const { layoutMeasurement, contentOffset, contentSize } =
-              e.nativeEvent;
-            const paddingToBottom = 20;
-            const isAtBottom =
-              layoutMeasurement.height + contentOffset.y >=
-              contentSize.height - paddingToBottom;
-            setAutoScroll(isAtBottom);
-            if (isAtBottom && scrollLoading) {
-              setScrollLoading(false);
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 5 : 0}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => {
+            if (autoScroll && !scrollLoading && !isStreaming && !isLoading) {
+              setScrollLoading(true);
+              scrollViewRef.current?.scrollToEnd({ animated: true });
               if (scrollTimeoutRef.current) {
                 clearTimeout(scrollTimeoutRef.current);
-                scrollTimeoutRef.current = null;
               }
+              scrollTimeoutRef.current = setTimeout(() => {
+                setScrollLoading(false);
+                scrollTimeoutRef.current = null;
+              }, 1000);
+            } else if (isStreaming || isLoading) {
+              scrollViewRef.current?.scrollToEnd({ animated: false });
             }
-          } catch (err) {
-            console.error("Error handling scroll event:", err);
-          }
-        }}
-        scrollEventThrottle={100}
-      >
-        {messages.map((message) => (
-          <View
-            key={message.id}
-            style={[
-              styles.messageContainer,
-              message.role === "user"
-                ? styles.userMessage
-                : styles.assistantMessage,
-            ]}
-          >
+          }}
+          onScroll={(e) => {
+            try {
+              const { layoutMeasurement, contentOffset, contentSize } =
+                e.nativeEvent;
+              const paddingToBottom = 20;
+              const isAtBottom =
+                layoutMeasurement.height + contentOffset.y >=
+                contentSize.height - paddingToBottom;
+              setAutoScroll(isAtBottom);
+              if (isAtBottom && scrollLoading) {
+                setScrollLoading(false);
+                if (scrollTimeoutRef.current) {
+                  clearTimeout(scrollTimeoutRef.current);
+                  scrollTimeoutRef.current = null;
+                }
+              }
+            } catch (err) {
+              console.error("Error handling scroll event:", err);
+            }
+          }}
+          scrollEventThrottle={100}
+        >
+          {messages.map((message) => (
             <View
+              key={message.id}
               style={[
-                styles.messageBubble,
+                styles.messageContainer,
                 message.role === "user"
-                  ? styles.userBubble
-                  : styles.assistantBubble,
+                  ? styles.userMessage
+                  : styles.assistantMessage
               ]}
             >
-              <Text
+              <View
                 style={[
-                  styles.messageText,
+                  styles.messageBubble,
                   message.role === "user"
-                    ? styles.userText
-                    : styles.assistantText,
+                    ? styles.userBubble
+                    : styles.assistantBubble
                 ]}
               >
-                {message.role === "assistant"
-                  ? renderMarkdown(message.content)
-                  : message.content}
+                <Text
+                  style={[
+                    styles.messageText,
+                    message.role === "user"
+                      ? styles.userText
+                      : styles.assistantText
+                  ]}
+                >
+                  {message.role === "assistant"
+                    ? renderMarkdown(message.content)
+                    : message.content}
+                </Text>
+              </View>
+              {message.role === "assistant" && message.id !== "welcome" && (
+                <TouchableOpacity
+                  style={styles.viewSourceButton}
+                  onPress={() => router.push("/MedicalSourcesPage" as any)}
+                >
+                  <ExternalLink size={12} color="#10B981" />
+                  <Text style={styles.viewSourceText}>
+                    View Medical Sources
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.messageTime}>
+                {formatTime(message.timestamp)}
               </Text>
             </View>
-            {message.role === "assistant" && message.id !== "welcome" && (
-              <TouchableOpacity
-                style={styles.viewSourceButton}
-                onPress={() => router.push("/MedicalSourcesPage" as any)}
-              >
-                <ExternalLink size={12} color="#10B981" />
-                <Text style={styles.viewSourceText}>View Medical Sources</Text>
-              </TouchableOpacity>
-            )}
-            <Text style={styles.messageTime}>
-              {formatTime(message.timestamp)}
-            </Text>
-          </View>
-        ))}
+          ))}
 
-        {isStreaming && streamingText && (
-          <View
-            key={`streaming-${streamingMessageId}`}
-            style={[styles.messageContainer, styles.assistantMessage]}
-          >
-            <View style={[styles.messageBubble, styles.assistantBubble]}>
-              <Text style={[styles.messageText, styles.assistantText]}>
-                {renderMarkdown(streamingText)}
-                <Text style={styles.cursor}>▋</Text>
-              </Text>
+          {isStreaming && streamingText && (
+            <View
+              key={`streaming-${streamingMessageId}`}
+              style={[styles.messageContainer, styles.assistantMessage]}
+            >
+              <View style={[styles.messageBubble, styles.assistantBubble]}>
+                <Text style={[styles.messageText, styles.assistantText]}>
+                  {renderMarkdown(streamingText)}
+                  <Text style={styles.cursor}>▋</Text>
+                </Text>
+              </View>
+              <Text style={styles.messageTime}>{formatTime(new Date())}</Text>
             </View>
-            <Text style={styles.messageTime}>{formatTime(new Date())}</Text>
+          )}
+
+          {isLoading && !isStreaming && (
+            <View style={[styles.messageContainer, styles.assistantMessage]}>
+              <View style={[styles.messageBubble, styles.assistantBubble]}>
+                <Text style={styles.typingText}>Ez is typing...</Text>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+
+        {scrollLoading && !isStreaming && !isLoading && (
+          <View style={styles.scrollOverlay} pointerEvents="none">
+            <ActivityIndicator size="small" color="#10B981" />
           </View>
         )}
 
-        {isLoading && !isStreaming && (
-          <View style={[styles.messageContainer, styles.assistantMessage]}>
-            <View style={[styles.messageBubble, styles.assistantBubble]}>
-              <Text style={styles.typingText}>Ez is typing...</Text>
-            </View>
-          </View>
-        )}
-      </ScrollView>
-
-      {scrollLoading && !isStreaming && !isLoading && (
-        <View style={styles.scrollOverlay} pointerEvents="none">
-          <ActivityIndicator size="small" color="#10B981" />
-        </View>
-      )}
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          placeholder={
-            user.subscription_plan === "premium" || user.credits > 0
-              ? "Ask me anything about your health..."
-              : "No credits remaining"
-          }
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-          maxLength={500}
-          editable={
-            !isLoading &&
-            !isStreaming &&
-            (user.subscription_plan !== "premium" ? user.credits > 0 : true)
-          }
-          placeholderTextColor="#6B7280"
-        />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!inputText.trim() ||
-              isLoading ||
-              isStreaming ||
-              user.credits <= 0) &&
-              styles.sendButtonDisabled,
-          ]}
-          onPress={sendMessage}
-          disabled={
-            !inputText.trim() || isLoading || isStreaming || user.credits <= 0
-          }
-        >
-          <Send size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {user.credits <= 0 && (
-        <View style={styles.noCreditsContainer}>
-          <Text style={styles.noCreditsText}>
-            You&apos;re out of credits! "Upgrade your plan for more credits."
-          </Text>
-
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            placeholder={
+              user.subscription_plan === "premium" || user.credits > 0
+                ? "Ask me anything about your health..."
+                : "No credits remaining"
+            }
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={500}
+            editable={
+              !isLoading &&
+              !isStreaming &&
+              (user.subscription_plan !== "premium" ? user.credits > 0 : true)
+            }
+            placeholderTextColor="#6B7280"
+          />
           <TouchableOpacity
-            style={styles.upgradeButton}
-            onPress={() => router.push("/pricing")}
+            style={[
+              styles.sendButton,
+              (!inputText.trim() ||
+                isLoading ||
+                isStreaming ||
+                user.credits <= 0) &&
+                styles.sendButtonDisabled
+            ]}
+            onPress={sendMessage}
+            disabled={
+              !inputText.trim() || isLoading || isStreaming || user.credits <= 0
+            }
           >
-            <Text style={styles.upgradeButtonText}>Upgrade Plan</Text>
+            <Send size={20} color="#fff" />
           </TouchableOpacity>
         </View>
-      )}
+
+        {user.credits <= 0 && (
+          <View style={styles.noCreditsContainer}>
+            <Text style={styles.noCreditsText}>
+              You&apos;re out of credits! "Upgrade your plan for more credits."
+            </Text>
+
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => router.push("/pricing")}
+            >
+              <Text style={styles.upgradeButtonText}>Upgrade Plan</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -577,7 +587,7 @@ export default function ChatPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#fff"
   },
   header: {
     flexDirection: "row",
@@ -586,17 +596,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: "#E5E7EB"
   },
   headerCenter: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 8
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#1F2937",
+    color: "#1F2937"
   },
   creditsContainer: {
     flexDirection: "row",
@@ -605,12 +615,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    gap: 4,
+    gap: 4
   },
   creditsText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#92400E",
+    color: "#92400E"
   },
   disclaimer: {
     backgroundColor: "#FEF2F2",
@@ -619,12 +629,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
+    gap: 8
   },
   disclaimerText: {
     fontSize: 12,
     color: "#991B1B",
-    flex: 1,
+    flex: 1
   },
   sourcesLink: {
     flexDirection: "row",
@@ -633,61 +643,61 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     backgroundColor: "#F0FDF4",
-    borderRadius: 8,
+    borderRadius: 8
   },
   sourcesLinkText: {
     fontSize: 11,
     color: "#10B981",
-    fontWeight: "600",
+    fontWeight: "600"
   },
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 16
   },
   messageContainer: {
-    marginBottom: 16,
+    marginBottom: 16
   },
   userMessage: {
-    alignItems: "flex-end",
+    alignItems: "flex-end"
   },
   assistantMessage: {
-    alignItems: "flex-start",
+    alignItems: "flex-start"
   },
   messageBubble: {
     maxWidth: "80%",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: 16
   },
   userBubble: {
     backgroundColor: "#10B981",
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 4
   },
   assistantBubble: {
     backgroundColor: "#F9FAFB",
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#E5E7EB"
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 22
   },
   userText: {
-    color: "#fff",
+    color: "#fff"
   },
   assistantText: {
-    color: "#1F2937",
+    color: "#1F2937"
   },
   boldText: {
-    fontWeight: "bold",
+    fontWeight: "bold"
   },
   messageTime: {
     fontSize: 12,
     color: "#9CA3AF",
     marginTop: 4,
-    marginHorizontal: 4,
+    marginHorizontal: 4
   },
   viewSourceButton: {
     flexDirection: "row",
@@ -698,17 +708,17 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     backgroundColor: "#F0FDF4",
     borderRadius: 8,
-    alignSelf: "flex-start",
+    alignSelf: "flex-start"
   },
   viewSourceText: {
     fontSize: 11,
     color: "#10B981",
-    fontWeight: "600",
+    fontWeight: "600"
   },
   typingText: {
     fontSize: 16,
     color: "#6B7280",
-    fontStyle: "italic",
+    fontStyle: "italic"
   },
   inputContainer: {
     flexDirection: "row",
@@ -717,7 +727,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
-    gap: 12,
+    gap: 12
   },
   textInput: {
     flex: 1,
@@ -728,7 +738,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     maxHeight: 100,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#E5E7EB"
   },
   sendButton: {
     backgroundColor: "#10B981",
@@ -736,33 +746,33 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "center"
   },
   sendButtonDisabled: {
-    backgroundColor: "#D1D5DB",
+    backgroundColor: "#D1D5DB"
   },
   noCreditsContainer: {
     backgroundColor: "#FEF3C7",
     paddingHorizontal: 20,
     paddingVertical: 16,
     alignItems: "center",
-    gap: 12,
+    gap: 12
   },
   noCreditsText: {
     fontSize: 14,
     color: "#92400E",
-    textAlign: "center",
+    textAlign: "center"
   },
   upgradeButton: {
     backgroundColor: "#10B981",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 8
   },
   upgradeButtonText: {
     color: "#fff",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "600"
   },
   scrollOverlay: {
     position: "absolute",
@@ -772,10 +782,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "transparent",
+    backgroundColor: "transparent"
   },
   cursor: {
     color: "#10B981",
-    fontWeight: "bold",
-  },
+    fontWeight: "bold"
+  }
 });
