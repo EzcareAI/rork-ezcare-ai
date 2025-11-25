@@ -33,16 +33,26 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
+  const [streamingMessageId, setStreamingMessageId] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [scrollLoading, setScrollLoading] = useState(false);
   const { user, updateCredits } = useAuth();
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streamingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
   useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
         scrollTimeoutRef.current = null;
+      }
+      if (streamingIntervalRef.current) {
+        clearInterval(streamingIntervalRef.current);
+        streamingIntervalRef.current = null;
       }
     };
   }, []);
@@ -117,8 +127,75 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    if (isStreaming && streamingText) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (scrollViewRef.current) {
+            scrollViewRef.current.scrollToEnd({ animated: false });
+          }
+        });
+      });
+    }
+  }, [streamingText, isStreaming]);
+
+  const simulateStreaming = (fullText: string, messageId: string) => {
+    setIsStreaming(true);
+    setStreamingText("");
+    setStreamingMessageId(messageId);
+    setAutoScroll(true);
+
+    const words = fullText.split(/(\s+)/);
+    let currentIndex = 0;
+    let builtText = "";
+
+    if (streamingIntervalRef.current) {
+      clearInterval(streamingIntervalRef.current);
+    }
+
+    setTimeout(() => {
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollToEnd({ animated: false });
+      }
+    }, 50);
+
+    streamingIntervalRef.current = setInterval(() => {
+      if (currentIndex < words.length) {
+        builtText += words[currentIndex];
+        setStreamingText(builtText);
+        currentIndex++;
+
+        requestAnimationFrame(() => {
+          if (scrollViewRef.current) {
+            scrollViewRef.current.scrollToEnd({ animated: false });
+          }
+        });
+      } else {
+        if (streamingIntervalRef.current) {
+          clearInterval(streamingIntervalRef.current);
+          streamingIntervalRef.current = null;
+        }
+
+        const assistantMessage: Message = {
+          id: messageId,
+          role: "assistant",
+          content: fullText,
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        requestAnimationFrame(() => {
+          setIsStreaming(false);
+          setStreamingText("");
+          setStreamingMessageId("");
+        });
+      }
+    }, 30);
+  };
+
   const sendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+    if (!inputText.trim() || isLoading || isStreaming) return;
 
     if (!user || user.credits <= 0) {
       Alert.alert(
@@ -145,7 +222,7 @@ export default function ChatPage() {
 
       let systemPrompt = "";
       const basePrompt =
-        "You are Ez, a friendly AI health buddy for people aged 30-70. Provide helpful, caring health guidance in simple terms using a casual, friendly tone. Combine traditional and modern health advice but never prescribe medications or diagnose conditions. Always remind users that this is educational content only and not medical advice. For emergencies, they should call 911 or seek immediate medical attention. Use markdown formatting for better readability (bold, lists, etc.).";
+        "You are Ez, a friendly AI health buddy for people aged 30-70. Provide helpful, caring health guidance in simple terms using a casual, friendly tone. Combine traditional and modern health advice but never prescribe medications or diagnose conditions. Keep your responses concise and helpful. Use markdown formatting for better readability (bold, lists, etc.).";
 
       try {
         const { data: quizData } = await supabase
@@ -233,14 +310,10 @@ export default function ChatPage() {
         }
       }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: assistantContent,
-        timestamp: new Date(),
-      };
+      setIsLoading(false);
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      const assistantMessageId = (Date.now() + 1).toString();
+      simulateStreaming(assistantContent, assistantMessageId);
 
       if (!skipSave) {
         try {
@@ -249,7 +322,7 @@ export default function ChatPage() {
             .insert({
               user_id: user.id,
               message: userMessage.content,
-              response: assistantMessage.content,
+              response: assistantContent,
             })
             .select();
 
@@ -273,7 +346,6 @@ export default function ChatPage() {
     } catch (error) {
       console.error("Error sending message:", error);
       Alert.alert("Error", "Failed to send message. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -335,7 +407,7 @@ export default function ChatPage() {
         style={styles.messagesContainer}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => {
-          if (autoScroll && !scrollLoading) {
+          if (autoScroll && !scrollLoading && !isStreaming && !isLoading) {
             setScrollLoading(true);
             scrollViewRef.current?.scrollToEnd({ animated: true });
             if (scrollTimeoutRef.current) {
@@ -345,6 +417,8 @@ export default function ChatPage() {
               setScrollLoading(false);
               scrollTimeoutRef.current = null;
             }, 1000);
+          } else if (isStreaming || isLoading) {
+            scrollViewRef.current?.scrollToEnd({ animated: false });
           }
         }}
         onScroll={(e) => {
@@ -415,7 +489,22 @@ export default function ChatPage() {
           </View>
         ))}
 
-        {isLoading && (
+        {isStreaming && streamingText && (
+          <View
+            key={`streaming-${streamingMessageId}`}
+            style={[styles.messageContainer, styles.assistantMessage]}
+          >
+            <View style={[styles.messageBubble, styles.assistantBubble]}>
+              <Text style={[styles.messageText, styles.assistantText]}>
+                {renderMarkdown(streamingText)}
+                <Text style={styles.cursor}>▋</Text>
+              </Text>
+            </View>
+            <Text style={styles.messageTime}>{formatTime(new Date())}</Text>
+          </View>
+        )}
+
+        {isLoading && !isStreaming && (
           <View style={[styles.messageContainer, styles.assistantMessage]}>
             <View style={[styles.messageBubble, styles.assistantBubble]}>
               <Text style={styles.typingText}>Ez is typing...</Text>
@@ -424,7 +513,7 @@ export default function ChatPage() {
         )}
       </ScrollView>
 
-      {scrollLoading && (
+      {scrollLoading && !isStreaming && !isLoading && (
         <View style={styles.scrollOverlay} pointerEvents="none">
           <ActivityIndicator size="small" color="#10B981" />
         </View>
@@ -444,6 +533,7 @@ export default function ChatPage() {
           maxLength={500}
           editable={
             !isLoading &&
+            !isStreaming &&
             (user.subscription_plan !== "premium" ? user.credits > 0 : true)
           }
           placeholderTextColor="#6B7280"
@@ -451,11 +541,16 @@ export default function ChatPage() {
         <TouchableOpacity
           style={[
             styles.sendButton,
-            (!inputText.trim() || isLoading || user.credits <= 0) &&
+            (!inputText.trim() ||
+              isLoading ||
+              isStreaming ||
+              user.credits <= 0) &&
               styles.sendButtonDisabled,
           ]}
           onPress={sendMessage}
-          disabled={!inputText.trim() || isLoading || user.credits <= 0}
+          disabled={
+            !inputText.trim() || isLoading || isStreaming || user.credits <= 0
+          }
         >
           <Send size={20} color="#fff" />
         </TouchableOpacity>
@@ -678,5 +773,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "transparent",
+  },
+  cursor: {
+    color: "#10B981",
+    fontWeight: "bold",
   },
 });

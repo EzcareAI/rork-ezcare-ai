@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -22,10 +23,35 @@ import {
   Award,
   Lock,
 } from "lucide-react-native";
+import { useAuth } from "@/contexts/auth-context";
 
 const { width } = Dimensions.get("window");
 
 export default function LandingPage() {
+  const { user, isLoading } = useAuth();
+  const [hasCheckedAuth, setHasCheckedAuth] = React.useState(false);
+
+  useEffect(() => {
+    if (!isLoading && !hasCheckedAuth) {
+      setHasCheckedAuth(true);
+      if (user) {
+        setTimeout(() => {
+          router.replace("/dashboard");
+        }, 0);
+      }
+    }
+  }, [user, isLoading, hasCheckedAuth]);
+
+  if (isLoading || user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
   const testimonials = [
     {
       name: "Sarah M.",
@@ -776,5 +802,16 @@ const styles = StyleSheet.create({
   securityFeatureText: {
     fontSize: 14,
     color: "#4B5563",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#6B7280",
   },
 });
